@@ -63,7 +63,13 @@ export function KGConfigurationPage({
     <div className="a3-kgp" data-variant={variant}>
       <div className="a3-kgp-head">
         <div className="a3-kgp-identity">
-          <p className="a3-cap">{identity}</p>
+          {/* No position line. `identity` («Konfigurator · KG 400») said
+              where the reader is — which the rail says already, permanently
+              and with a state per step. Printed again above every heading it
+              was the same sentence twice on one screen, and the version in
+              the rail is the one that can be acted on. The prop stays: it is
+              still the accessible name of the group navigation, where a name
+              is required and no rail is in reach. */}
           <h1 className="a3-kgp-title" data-page-heading tabIndex={-1}>{title}</h1>
           <p className="a3-lede">{lead}</p>
         </div>

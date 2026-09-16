@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react'
+import { useId, type ReactNode, type RefObject } from 'react'
 import { useT } from '../i18n'
 import { SemanticStatus, type SemanticStatusTone } from './SemanticStatus'
 
@@ -54,7 +54,14 @@ const AUTHORITY_TONE: Record<InformationAuthority, SemanticStatusTone> = {
   derived: 'neutral',
   userEntered: 'neutral',
   confirmed: 'ok',
-  overridden: 'attention',
+  /* A value a person typed is DECIDED, not a caveat. It carried the
+     attention tone while the only overrides in the product came from the
+     fixture and meant «somebody changed this, look at it»; now that a reader
+     can enter one themselves, the row they just settled must not come back
+     wearing an alarm. Complete and attributable — the same tone as a
+     confirmation, distinguished by its own label and by the displaced value
+     printed underneath. */
+  overridden: 'ok',
   historical: 'neutral',
   stale: 'stale',
   unknown: 'unknown',
@@ -94,6 +101,7 @@ export type AuthorityEvidence = {
  */
 export function AuthorityTrace({
   authority, evidence, confirmation, override, freshness, children, layout = 'inline',
+  onOpenEvidence, openEvidenceLabel, evidenceRef, evidenceOpen,
 }: {
   authority: InformationAuthority
   evidence?: AuthorityEvidence
@@ -105,6 +113,20 @@ export function AuthorityTrace({
   freshness?: { staleReason: string }
   children: ReactNode
   layout?: 'inline' | 'stacked'
+  /**
+   * Opens the cited document. Given one, the FILE NAME itself becomes the
+   * control — the citation is the thing a reader points at when they want to
+   * see the source, and a separate button beside it was a second name for
+   * the same act. Only the name is the control: a version and an issue date
+   * are facts about the file, not two more ways to open it.
+   */
+  onOpenEvidence?: () => void
+  /** Accessible name for that control — it must say WHICH file it opens. */
+  openEvidenceLabel?: string
+  /** Focus returns here when the surface the control opened is closed. */
+  evidenceRef?: RefObject<HTMLButtonElement>
+  /** Whether the surface it controls is currently open. */
+  evidenceOpen?: boolean
 }) {
   const t = useT()
   const detailId = useId()
@@ -124,7 +146,18 @@ export function AuthorityTrace({
         />
         {evidence ? (
           <span className="a3-aut-evidence">
-            {evidence.label}
+            {onOpenEvidence ? (
+              <button
+                ref={evidenceRef}
+                type="button"
+                className="a3-aut-evidence-link hit-target"
+                aria-expanded={evidenceOpen}
+                aria-label={openEvidenceLabel}
+                onClick={onOpenEvidence}
+              >
+                {evidence.label}
+              </button>
+            ) : evidence.label}
             {evidence.version ? ` · ${evidence.version}` : ''}
             {evidence.issuedAt ? ` · ${evidence.issuedAt}` : ''}
           </span>

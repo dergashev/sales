@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  KG_SCOPE_GROUPS,
+  KG_DECIDED_SCOPE_GROUPS,
   chapterOf,
   groupOfService,
   requiredUpstreamVariant,
@@ -17,6 +17,8 @@ import {
   kgScopeStatus,
   useStore,
 } from '../state/store'
+import { selectedBgfRSTotal } from '../state/optionBuildingScope'
+import { useLocalNumber } from '../lib/localNumber'
 import { axisServices } from '../state/optionCommercialProjection'
 import { ChoiceGroup } from '../design-system/ChoiceGroup'
 import { useT } from '../i18n'
@@ -63,10 +65,14 @@ import { M06_ROW_MS, M06_UNLOCK_MS } from '../config/ui-policy'
 export function Leistungsabgrenzung() {
   const s = useStore()
   const t = useT()
+  const num = useLocalNumber()
   const catalogue = kgCatalogueFor(s)
   const decisions = s.kgConfig
   const decided = kgDecidedScopeCount(s)
-  const total = KG_SCOPE_GROUPS.length
+  // Three asked groups, not six — `KG_DECIDED_SCOPE_GROUPS` is the one
+  // declaration of which they are, and the count below reads the same list
+  // the ledger renders.
+  const total = KG_DECIDED_SCOPE_GROUPS.length
   const complete = kgScopeDecisionsComplete(s)
   const status = kgScopeStatus(s)
 
@@ -109,7 +115,7 @@ export function Leistungsabgrenzung() {
   const previouslyUndecided = useRef<string | null>(null)
   useEffect(() => {
     if (decided !== total - 1 || !decisions) return
-    previouslyUndecided.current = KG_SCOPE_GROUPS
+    previouslyUndecided.current = KG_DECIDED_SCOPE_GROUPS
       .find((group) => decisions.scope[group] === 'undecided') ?? null
   }, [decided, total, decisions])
 
@@ -152,7 +158,22 @@ export function Leistungsabgrenzung() {
     return signedMoneyText(delta, s.uiLanguage)
   }
 
-  const rows: readonly ScopeLedgerRow[] = KG_SCOPE_GROUPS.map((group) => {
+  /**
+   * What the STANDING decision is worth, as the mirror of undoing it.
+   *
+   * `optionDelta` answers "what would change if you chose this", which is
+   * zero for the choice already taken. The amount a reader wants there is
+   * the group's own weight in the offer, and that is exactly the delta of
+   * the opposite move with its sign turned around — same function, same
+   * arithmetic, no second calculator.
+   */
+  const standingAmountOf = (group: KgScopeGroup, opposite: 'included' | 'excluded') => {
+    const delta = s.optionDelta({ kind: 'kgScope', group, value: opposite })
+    if (delta.isZero()) return t('vr3.kg.ledger.noEffect')
+    return signedMoneyText(delta.negated(), s.uiLanguage)
+  }
+
+  const rows: readonly ScopeLedgerRow[] = KG_DECIDED_SCOPE_GROUPS.map((group) => {
     const chapter = chapterOf(catalogue, group)
     const decision = decisions.scope[group]
     return {
@@ -180,13 +201,21 @@ export function Leistungsabgrenzung() {
       // The consequence of each choice is visible AT ALL TIMES, never on
       // hover (R-05/OPTION-009): the user is deciding money, and a price
       // that only appears when the pointer is already on the option arrives
-      // after the decision. The choice already taken says so instead of
-      // repeating its own amount — that number is in the rail.
+      // after the decision.
+      //
+      // THE CHOSEN OPTION SHOWS A NUMBER TOO, in the same slot. It used to
+      // print «aktuelle Wahl» there — a word where both neighbours carry an
+      // amount, so the one line a reader compares changed KIND depending on
+      // what was already decided, and the slot's height changed with it. The
+      // figure is what this group is worth inside the offer, derived from
+      // the delta of LEAVING it (`−4.020.000 €` → `+4.020.000 €`) rather
+      // than from a second calculator: the preview function stays the single
+      // source of every amount on this screen.
       includeConsequence: decision === 'included'
-        ? t('configurator.scopeCatalog.currentChoice')
+        ? standingAmountOf(group, 'excluded')
         : consequenceOf(group, 'included'),
       excludeConsequence: decision === 'excluded'
-        ? t('configurator.scopeCatalog.currentChoice')
+        ? standingAmountOf(group, 'included')
         : consequenceOf(group, 'excluded'),
     }
   })
@@ -197,11 +226,9 @@ export function Leistungsabgrenzung() {
           lead below, state on the right. One learned header, not two. */}
       <div className="a3-kgp-head">
         <div className="a3-kgp-identity">
-          <p className="a3-cap">{t('vr3.kg.ledger.stageMeta')}</p>
           <h1 className="a3-kgp-title" data-page-heading tabIndex={-1}>
             {t('chapter.scopeBoundaries')}
           </h1>
-          <p className="a3-lede">{t('vr3.kg.ledger.lede')}</p>
         </div>
         <div className="a3-kgp-progress">
           {/* The canonical `n/6` readout, so the M-06 resolution lands on
@@ -223,6 +250,28 @@ export function Leistungsabgrenzung() {
           )}
         </div>
       </div>
+
+      {/* THE BASE THIS OPTION IS CALCULATED FROM — visible, and changeable.
+          A single-building Option has its base confirmed with the Option
+          itself and therefore has no `Gebäude & Umfang` row in the rail. A
+          settlement nobody can see or revisit would be worse than the two
+          clicks it replaced, so the fact is stated here, where the first
+          real decision is made. */}
+      {s.scopeBuildings.length === 1 && s.scopeSaved && (
+        <div className="a3-abgrenzung-base">
+          <p className="a3-abgrenzung-base-fact">
+            <span className="a3-cap">{t('vr3.scope.base.label')}</span>
+            {' '}
+            <span>{s.scopeBuildings[0]!.name}</span>
+            {' · '}
+            <span className="numeric">
+              {num(selectedBgfRSTotal(s), 0)}
+              {NNBSP}
+              m² BGF R+S
+            </span>
+          </p>
+        </div>
+      )}
 
       <ScopeDecisionLedger
         rows={rows}
@@ -265,7 +314,10 @@ export function Leistungsabgrenzung() {
           })}
           onClick={() => {
             s.confirmKgScope()
-            const first = KG_SCOPE_GROUPS.find((g) => decisions.scope[g] === 'included')
+            // The first ASKED group — confirming the scope must land on a
+            // page the rail actually offers.
+            const first = KG_DECIDED_SCOPE_GROUPS
+              .find((g) => decisions.scope[g] === 'included')
             if (first) s.openKgChapter(first)
           }}
         >
@@ -363,7 +415,10 @@ function ScopeAxis({ axis, service }: { axis: KgScopeAxis; service: KgService })
    * contract the ledger above already follows.
    */
   const consequenceOf = (variant: string) => {
-    if (variant === current) return t('configurator.scopeCatalog.currentChoice')
+    // The chosen variant says nothing here: the fill, the ✓ and the weight
+    // already say it is chosen, and «aktuelle Wahl» was a third carrier of
+    // the same fact competing with the amounts beside it (rule 9).
+    if (variant === current) return undefined
     const delta = s.optionDelta({
       kind: 'kgService',
       serviceId: service.id,

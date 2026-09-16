@@ -1,6 +1,7 @@
 import Decimal from 'decimal.js'
 import catalogueFixture from '../fixtures/kg-configuration.json'
 import type { CostAuthority, CostGroup, Driver } from './calculate'
+import { quantityLabel } from './money'
 import type { ResponsibilityCatalogue } from './responsibility'
 
 /**
@@ -36,6 +37,75 @@ export const KG_SCOPE_GROUPS = [
 ] as const
 
 export type KgScopeGroup = typeof KG_SCOPE_GROUPS[number]
+
+/**
+ * THE COST GROUPS THE SELLER ACTUALLY DECIDES (owner's decision, 13.09).
+ *
+ * The ledger asked six questions and three of them had one realistic answer
+ * every time: preparatory measures, external works and fit-out are part of
+ * what All3 builds, and making the seller tick them on every Option was
+ * ceremony that buried the three decisions that carry money — construction,
+ * technical systems and ancillary construction.
+ *
+ * The other three do NOT disappear from the offer: they are `included` from
+ * the Option's first second (`initialDecisions`), they keep their KG pages,
+ * their services and their share of the total. What changed is who says so.
+ * That is a commercial default, not an absence, which is why it is stated
+ * under the ledger instead of being silently true — and why it is declared
+ * HERE, once, rather than by omission at each render site.
+ *
+ * `undecided` therefore never appears on a baseline group, and the gate
+ * below counts only what a person can still answer.
+ */
+export const KG_DECIDED_SCOPE_GROUPS = ['KG_300', 'KG_400', 'KG_700'] as const
+
+export type KgDecidedScopeGroup = typeof KG_DECIDED_SCOPE_GROUPS[number]
+
+/** The complement: included by default, never asked. */
+export const KG_BASELINE_INCLUDED_GROUPS = KG_SCOPE_GROUPS
+  .filter((group): group is KgScopeGroup =>
+    !(KG_DECIDED_SCOPE_GROUPS as readonly string[]).includes(group))
+
+/**
+ * A decision set with every baseline group `included`.
+ *
+ * Applied where a set ENTERS the store — new Options and payloads persisted
+ * before this rule existed — so a stored `undecided` on a group nobody can
+ * answer any more can never sit there blocking the gate forever.
+ */
+export function withBaselineIncluded(
+  decisions: KgDecisions,
+  /**
+   * Pass the catalogue to settle the SERVICES of those groups too. Without
+   * it only the group-level inclusion is normalised, which is all a caller
+   * without a catalogue can honestly do.
+   */
+  catalogue?: KgCatalogue | null,
+): KgDecisions {
+  let changed = false
+  const scope = { ...decisions.scope }
+  for (const group of KG_BASELINE_INCLUDED_GROUPS) {
+    if (scope[group] !== 'included') {
+      scope[group] = 'included'
+      changed = true
+    }
+  }
+  const services = { ...decisions.services }
+  if (catalogue) {
+    for (const service of allServices(catalogue)) {
+      const group = groupOfService(catalogue, service.id)
+      if (!group || isAskedScopeGroup(group)) continue
+      if (services[service.id]?.state !== 'undecided') continue
+      services[service.id] = baselineServiceDecision(service)
+      changed = true
+    }
+  }
+  return changed ? { ...decisions, scope, services } : decisions
+}
+
+export function isAskedScopeGroup(group: KgScopeGroup): boolean {
+  return (KG_DECIDED_SCOPE_GROUPS as readonly string[]).includes(group)
+}
 
 /**
  * A scope decision has THREE states, and `undecided` is the initial one.
@@ -135,7 +205,7 @@ export type KgServiceDependency = Readonly<{
   requiresVariant?: string
   /**
    * VR3-KG-UNIFY-00 — the upstream may hold ANY of these. A timber colour
-   * family exists under two of the five façade compositions (full timber and
+   * family exists under two of the five facade compositions (full timber and
    * rendered-ground-floor-timber-above); one `requiresVariant` cannot say so,
    * and two dependencies cannot either. Same semantics as `requiresVariant`
    * for blocking and suspension.
@@ -533,7 +603,7 @@ export type KgServiceGroup = Readonly<{
    * VR3-KG-UNIFY-00 — the building whose decisions this system row holds.
    *
    * A construction system is decided PER BUILDING. Rather than one row per
-   * building per system (three foundations, three façades …) the chapter
+   * building per system (three foundations, three facades …) the chapter
    * shows one row per system and the building context chooses which
    * building's rows are live. A group with no `buildingId` is shared by the
    * Option and is shown under every building.
@@ -658,17 +728,63 @@ export function groupOfService(
  * project's standard scope and not a scope conclusion — the KG it belongs to
  * still has to be included before it contributes anything.
  */
+/**
+ * EVERY COST GROUP STARTS INCLUDED (owner's decision, 14.09).
+ *
+ * The ledger's three-state model is intact and still readable on screen —
+ * a group can be excluded and will say so — but `undecided` is no longer a
+ * state an Option is BORN in. The offer begins as the whole building and
+ * the seller takes things out of it, rather than assembling it from nothing
+ * before a price exists.
+ *
+ * What this gives up, said plainly: the product no longer distinguishes
+ * "not yet answered" from "deliberately included" at the start. That
+ * distinction was the point of VR3-03's third state, and it is now carried
+ * only by what the seller CHANGES, not by what they have not touched.
+ */
 export function initialDecisions(catalogue: KgCatalogue | null): KgDecisions {
   const scope = Object.fromEntries(
-    KG_SCOPE_GROUPS.map((g) => [g, 'undecided' as KgScopeDecision]),
+    KG_SCOPE_GROUPS.map((g) => [g, 'included' as KgScopeDecision]),
   ) as Record<KgScopeGroup, KgScopeDecision>
   const services: Record<string, KgServiceDecisionRecord> = {}
   if (catalogue) {
     for (const service of allServices(catalogue)) {
-      services[service.id] = initialServiceDecision(service)
+      const group = groupOfService(catalogue, service.id)
+      /**
+       * A group nobody is asked about cannot hold a question either.
+       *
+       * Its chapter has no row in the rail, so an `undecided` service inside
+       * it would be a question with no page to answer it on — and
+       * `kgConfigurationComplete` would wait for that answer forever,
+       * locking the schedule and the review behind a door with no handle.
+       * The project's own baseline answers instead, which is the same
+       * source these chapters already use for every service that carries no
+       * explicit question.
+       */
+      services[service.id] = group && !isAskedScopeGroup(group)
+        ? baselineServiceDecision(service)
+        : initialServiceDecision(service)
     }
   }
   return { scope, services }
+}
+
+/**
+ * The project standard's own answer, including for a service that would
+ * normally insist on an explicit one.
+ */
+export function baselineServiceDecision(service: KgService): KgServiceDecisionRecord {
+  if (service.kind.kind === 'readOnlyRequired') return { state: 'selected' }
+  const base: KgServiceDecisionRecord = {
+    state: service.baseline === 'selected' ? 'selected' : 'notSelected',
+  }
+  if (service.kind.kind === 'singleChoice') {
+    return { ...base, variant: service.kind.baselineVariant }
+  }
+  if (service.kind.kind === 'quantity') {
+    return { ...base, quantity: service.kind.baselineQuantity }
+  }
+  return base
 }
 
 export function initialServiceDecision(service: KgService): KgServiceDecisionRecord {
@@ -752,7 +868,7 @@ export function chapterBuildingIds(chapter: KgChapter): readonly string[] {
  * ONE PAGE, ONE BUILDING AT A TIME.
  *
  * The construction chapter decides per building, but three foundations,
- * three façades and three roofs as nine rows is the overview the audit
+ * three facades and three roofs as nine rows is the overview the audit
  * measured as "cost-code administration". The projection keeps every SHARED
  * group and, of the building-scoped ones, exactly the current building's
  * services and groups — so the rows are one row per system and the building
@@ -1276,6 +1392,77 @@ function suspensionOf(
  * its state from the dictionary, because a state is a text and texts are keys
  * (rule 36).
  */
+/**
+ * THE human-readable current answer of one decision — one implementation.
+ *
+ * The KG chapter renders it on the collapsed decision row; Final Validation
+ * renders the same sentence inside the expanded `Leistungen` row. Two
+ * readings of "what is currently chosen here" would be two answers the day a
+ * variant label, a derived sentence or an exclusion phrase changes, which is
+ * exactly the "one fact, two places" defect the review stage exists to catch.
+ *
+ * NOTHING IS TRANSLATED HERE. The fixture's own German/English copy is
+ * picked by `language`; the two answers the fixture does NOT word
+ * (`undecided`, and the generic included/not-included pair) are returned as
+ * KINDS, so their sentence stays in the dictionary where rule 36 requires
+ * it. A quantity comes back German-formatted from the one formatter, and the
+ * caller re-typesets the numerals for `en` exactly as every other consumer
+ * of a money/quantity label does.
+ */
+export type KgServiceAnswer =
+  | Readonly<{ kind: 'undecided' }>
+  | Readonly<{ kind: 'included' }>
+  | Readonly<{ kind: 'notIncluded' }>
+  | Readonly<{ kind: 'stated'; text: string }>
+  | Readonly<{ kind: 'quantity'; text: string }>
+
+export function kgServiceAnswer(
+  catalogue: KgCatalogue,
+  decisions: KgDecisions,
+  service: KgService,
+  language: 'de' | 'en',
+): KgServiceAnswer {
+  const decision = serviceDecision(decisions, service)
+  const pick = (de: string | undefined, en: string | undefined): string =>
+    (language === 'en' ? en : de) ?? ''
+  if (service.kind.kind === 'singleChoice') {
+    if (decision.state === 'undecided') return { kind: 'undecided' }
+    const variant = selectedVariant(service, decision)
+    return {
+      kind: 'stated',
+      text: variant
+        ? pick(variant.labelDe, variant.labelEn)
+        : pick(service.summaryDe, service.summaryEn),
+    }
+  }
+  if (service.kind.kind === 'readOnlyRequired') {
+    if (service.derived) {
+      return { kind: 'stated', text: derivedValue(catalogue, decisions, service, language) ?? '' }
+    }
+    return {
+      kind: 'stated',
+      text: pick(service.source?.valueDe, service.source?.valueEn)
+        || pick(service.summaryDe, service.summaryEn),
+    }
+  }
+  if (decision.state === 'undecided') return { kind: 'undecided' }
+  if (decision.state === 'notSelected') {
+    const named = pick(service.excludeLabelDe, service.excludeLabelEn)
+    return named ? { kind: 'stated', text: named } : { kind: 'notIncluded' }
+  }
+  if (service.kind.kind === 'quantity') {
+    return {
+      kind: 'quantity',
+      text: quantityLabel(
+        decision.quantity ?? service.kind.baselineQuantity,
+        pick(service.kind.unitDe, service.kind.unitEn),
+      ),
+    }
+  }
+  const named = pick(service.includeLabelDe, service.includeLabelEn)
+  return named ? { kind: 'stated', text: named } : { kind: 'included' }
+}
+
 export function suspensionVariantLabel(
   service: KgService, decisions: KgDecisions, language: 'de' | 'en',
 ): string | null {
@@ -1680,12 +1867,19 @@ export function kgServiceOfDriverKey(key: string): KgService | null {
 
 /* ── completion ────────────────────────────────────────────────────────── */
 
+/**
+ * Counted over the ASKED groups, because the count is a progress readout for
+ * a person: `n von 3` has to mean "n of the three you are asked about".
+ * Counting the baseline groups too would have opened the ledger at 3/6 with
+ * nothing done, and closed it at 6/6 after three clicks.
+ */
 export function decidedScopeCount(decisions: KgDecisions): number {
-  return KG_SCOPE_GROUPS.filter((g) => decisions.scope[g] !== 'undecided').length
+  return KG_DECIDED_SCOPE_GROUPS
+    .filter((g) => decisions.scope[g] !== 'undecided').length
 }
 
 export function scopeDecisionsComplete(decisions: KgDecisions): boolean {
-  return decidedScopeCount(decisions) === KG_SCOPE_GROUPS.length
+  return decidedScopeCount(decisions) === KG_DECIDED_SCOPE_GROUPS.length
 }
 
 export type KgChapterState =
@@ -1783,10 +1977,14 @@ export function kgConfigurationComplete(
 }
 
 /** The first cost group that still needs the user, in DIN 276 order. */
+/**
+ * Only an ASKED group can be outstanding: a baseline group has no page in
+ * the rail, so routing somebody to it would be routing them nowhere.
+ */
 export function firstOutstandingKgGroup(
   catalogue: KgCatalogue, decisions: KgDecisions,
 ): KgScopeGroup | null {
-  return KG_SCOPE_GROUPS.find((group) => {
+  return KG_DECIDED_SCOPE_GROUPS.find((group) => {
     const state = kgChapterProgress(catalogue, decisions, group).state
     return state === 'incomplete' || state === 'invalid'
   }) ?? null
@@ -1795,7 +1993,8 @@ export function firstOutstandingKgGroup(
 export function firstIncludedKgGroup(
   decisions: KgDecisions,
 ): KgScopeGroup | null {
-  return KG_SCOPE_GROUPS.find((g) => decisions.scope[g] === 'included') ?? null
+  return KG_DECIDED_SCOPE_GROUPS.find((g) => decisions.scope[g] === 'included')
+    ?? null
 }
 
 /** Every open explicit decision across the whole configuration. */

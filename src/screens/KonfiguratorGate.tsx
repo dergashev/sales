@@ -80,7 +80,7 @@ export function KonfiguratorGate() {
   ]
 
   return (
-    <div className="px-7 py-6">
+    <div className="py-6">
       <div className="a3-gatestage">
         <motion.div
           className="a3-gatestage-copy"

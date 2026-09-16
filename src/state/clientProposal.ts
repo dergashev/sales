@@ -334,7 +334,7 @@ export type ClientConstructionLine = Readonly<{
 }>
 
 export type ClientConstruction = Readonly<{
-  /** Reaches the main story: façade, ground-floor structure, roof, excluded UG. */
+  /** Reaches the main story: facade, ground-floor structure, roof, excluded UG. */
   story: readonly ClientConstructionLine[]
   /** Everything else, on request.  */
   detail: readonly ClientConstructionLine[]
@@ -585,8 +585,8 @@ function compositionState(row: CompositionRow): ClientCommercialState {
  *
  * Since the KG unification a construction decision can differ PER BUILDING:
  * `KgServiceGroup` and `KgService` each carry `buildingId`, and the complex
- * fixture holds three physically distinct façade decisions, three slabs,
- * three roofs. **Stating one façade for a three-building Option is false.**
+ * fixture holds three physically distinct facade decisions, three slabs,
+ * three roofs. **Stating one facade for a three-building Option is false.**
  * So a line whose answer differs across buildings is labelled with its
  * building; a line all buildings agree on is stated once, unqualified.
  *
@@ -691,7 +691,7 @@ function constructionLines(
   /**
    * A concept states ONE line when every building agrees, and one line per
    * building when they do not. That is the whole per-building rule: the
-   * client is never told a façade that is false for two of three houses.
+   * client is never told a facade that is false for two of three houses.
    */
   const toLines = (entries: readonly Raw[]): ClientConstructionLine[] => {
     const byLabel = new Map<string, Raw[]>()
@@ -1160,7 +1160,7 @@ export function clientProposal(
   /**
    * DC-44: at most five drivers, as a client reads them. The engine's list is
    * per building and per service (a three-building Option names the same
-   * façade three times), so rows with the same client label are summed
+   * facade three times), so rows with the same client label are summed
    * first, a zero row is dropped (a client never reads `0 €` as a driver),
    * the five largest are named and everything else is ONE remainder row —
    * so the rows still reconcile exactly to the basis (rule 35, unit-tested).

@@ -338,6 +338,12 @@ export type QuestionResponse = {
   at: string
 }
 
+/** Who confirmed an evidence item, and when. */
+export type EvidenceConfirmation = {
+  by: string
+  at: string
+}
+
 export type ProjectAnalysis = {
   projectId: string
   jobState: JobState
@@ -348,6 +354,24 @@ export type ProjectAnalysis = {
   documents: Record<string, DocumentRuntime>
   conflictDecisions: Record<string, ConflictDecision>
   questionResponses: Record<string, QuestionResponse>
+  /**
+   * Evidence items a person has confirmed, by item id.
+   *
+   * A confirmation is an ACT, not a flag: it carries who confirmed and
+   * when, because `confirmed` without an actor and a time is the one shape
+   * the evidence validator rejects outright. The fixture's own confirmed
+   * items keep their attribution; this map records the ones confirmed here.
+   */
+  evidenceConfirmations: Record<string, EvidenceConfirmation>
+  /**
+   * Values a person typed in place of an extracted one, by item id.
+   *
+   * The same shape of act as a confirmation, and recorded the same way: the
+   * extracted record is never edited, the human value is stored beside it
+   * with the actor and the instant, and the reading surfaces project it over
+   * the fixture. What it displaced stays visible on the row.
+   */
+  evidenceOverrides: Record<string, EvidenceOverride>
   /** Building fact keys whose confirmed value now needs review. */
   staleFactKeys: string[]
   /** Conflicts reopened because their evidence changed. */
@@ -418,6 +442,8 @@ export function initialProjectAnalysis(project: FixtureProject): ProjectAnalysis
     documents,
     conflictDecisions: {},
     questionResponses: {},
+    evidenceConfirmations: {},
+    evidenceOverrides: {},
     staleFactKeys: [],
     staleConflictIds: [],
     reanalysisCount: 0,
@@ -838,6 +864,50 @@ export function recordQuestionResponse(
     questionResponses: {
       ...analysis.questionResponses,
       [questionId]: { questionId, kind, actor: ANALYSIS_ACTOR, at },
+    },
+  }
+}
+
+/**
+ * Confirm one extracted value.
+ *
+ * Pure, like every other transition here: it returns a new analysis, and
+ * the caller journals the event. Confirming twice is not a second act — the
+ * first attribution stands, because the second would silently rewrite who
+ * vouched for the number.
+ */
+/** One manually entered value, with the attribution that makes it a human act. */
+export type EvidenceOverride = { value: string; by: string; at: string }
+
+/**
+ * Replace one extracted value with a value a person typed.
+ *
+ * Pure like its neighbour, and deliberately NOT idempotent the way
+ * `confirmEvidence` is: typing a different number is a new decision and
+ * carries a new attribution, while confirming twice is the same decision
+ * stated twice.
+ */
+export function overrideEvidence(
+  analysis: ProjectAnalysis, itemId: string, value: string, by: string, at: string,
+): ProjectAnalysis {
+  return {
+    ...analysis,
+    evidenceOverrides: {
+      ...analysis.evidenceOverrides,
+      [itemId]: { value, by, at },
+    },
+  }
+}
+
+export function confirmEvidence(
+  analysis: ProjectAnalysis, itemId: string, by: string, at: string,
+): ProjectAnalysis {
+  if (analysis.evidenceConfirmations[itemId]) return analysis
+  return {
+    ...analysis,
+    evidenceConfirmations: {
+      ...analysis.evidenceConfirmations,
+      [itemId]: { by, at },
     },
   }
 }

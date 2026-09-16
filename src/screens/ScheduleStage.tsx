@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { hasV3Surfaces } from '../lib/variantLock'
 import { Decimal } from 'decimal.js'
 import {
   activeSchedulePhasesFor,
@@ -31,6 +32,7 @@ import {
   type ScheduleEditorPhase,
 } from '../design-system/ScheduleEditor'
 import type { ScheduleStage as ScheduleStageState } from '../state/optionSchedule'
+import { BauzeitStage } from './BauzeitStage'
 
 /**
  * The SCHEDULE stage (VR3-04, target T-029).
@@ -49,6 +51,76 @@ import type { ScheduleStage as ScheduleStageState } from '../state/optionSchedul
  * dates for services they have not chosen yet.
  */
 export function ScheduleStage() {
+  const s = useStore()
+  /**
+   * VARIANTE `v3` — dieselbe Stufe, gerechnet statt geerbt.
+   *
+   * Die Umschaltung steht hier und nicht im Router, damit die Stufe EIN
+   * Ort bleibt: Sperre, Route und Bestätigung gehören beiden Varianten
+   * gemeinsam, und nur die Darstellung des Plans unterscheidet sich.
+   */
+  if (hasV3Surfaces(s.navVariant)) {
+    // Die Sperre zuerst, in BEIDEN Varianten: eine gerechnete Terminplanung
+    // für eine unfertige Konfiguration wäre eine Zahl ohne Grundlage.
+    return scheduleAvailableFor(s) ? <BauzeitStage /> : <ScheduleLockedGate />
+  }
+  return <ScheduleStageV2 />
+}
+
+/**
+ * DIE SPERRE der Terminstufe — EIN Ort für beide Varianten.
+ *
+ * `v2` und `v3` unterscheiden sich in der Darstellung des Plans, nie in der
+ * Voraussetzung dafür. Zwei Kopien dieser Sperre wären zwei Antworten auf
+ * die Frage „darf hier schon geplant werden?", und die zweite wäre die,
+ * die jemand zu pflegen vergisst.
+ */
+export function ScheduleLockedGate() {
+  const s = useStore()
+  const t = useT()
+  const decided = kgDecidedScopeCount(s)
+  const catalogue = kgCatalogueFor(s)
+  const outstanding = catalogue && s.kgConfig
+    ? firstOutstandingKgGroup(catalogue, s.kgConfig)
+    : null
+  const scopeComplete = kgScopeDecisionsComplete(s)
+  return (
+    <div className="py-6">
+      <ActionGate
+        status="locked"
+        prerequisites={[{
+          id: 'configuration',
+          label: t('vr3.schedule.prereq.configuration'),
+          met: false,
+          detail: !scopeComplete
+            ? t('vr3.kg.gate.decisionsDetail', { decided, total: KG_SCOPE_GROUPS.length })
+            : outstanding
+              ? t('vr3.kg.gate.chapterOutstanding', {
+                group: `KG${NNBSP}${outstanding.slice(3)}`,
+              })
+              : t('vr3.schedule.prereq.configurationDetail'),
+        }]}
+        route={{
+          label: outstanding
+            ? t('vr3.schedule.route.chapter', {
+              group: `KG${NNBSP}${outstanding.slice(3)}`,
+            })
+            : t('vr3.schedule.route.scope'),
+          onSelect: () => {
+            if (outstanding) { s.openKgChapter(outstanding); return }
+            s.openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)
+          },
+        }}
+      >
+        <h1 className="a3-hero-title" data-page-heading tabIndex={-1}>
+          {t('vr3.schedule.heading.locked')}
+        </h1>
+      </ActionGate>
+    </div>
+  )
+}
+
+function ScheduleStageV2() {
   const s = useStore()
   const t = useT()
   const num = useLocalNumber()
@@ -78,59 +150,7 @@ export function ScheduleStage() {
     wasConfirmed.current = stage === 'CONFIRMED'
   }, [stage])
 
-  if (!available) {
-    const decided = kgDecidedScopeCount(s)
-    const catalogue = kgCatalogueFor(s)
-    const outstanding = catalogue && s.kgConfig
-      ? firstOutstandingKgGroup(catalogue, s.kgConfig)
-      : null
-    const scopeComplete = kgScopeDecisionsComplete(s)
-    return (
-      <div className="px-7 py-6">
-        <ActionGate
-          status="locked"
-          prerequisites={[{
-            id: 'configuration',
-            label: t('vr3.schedule.prereq.configuration'),
-            met: false,
-            detail: !scopeComplete
-              ? t('vr3.kg.gate.decisionsDetail', { decided, total: KG_SCOPE_GROUPS.length })
-              : outstanding
-                ? t('vr3.kg.gate.chapterOutstanding', {
-                  group: `KG${NNBSP}${outstanding.slice(3)}`,
-                })
-                : t('vr3.schedule.prereq.configurationDetail'),
-          }]}
-          route={{
-            label: outstanding
-              ? t('vr3.schedule.route.chapter', {
-                group: `KG${NNBSP}${outstanding.slice(3)}`,
-              })
-              : t('vr3.schedule.route.scope'),
-            onSelect: () => {
-              if (outstanding) { s.openKgChapter(outstanding); return }
-              s.openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES)
-            },
-          }}
-        >
-          <h1 className="a3-hero-title" data-page-heading tabIndex={-1}>
-            {t('vr3.schedule.heading.locked')}
-          </h1>
-          {/* VR3-TGA-UX-00: the step before the schedule is reachable from
-              the locked gate too — Previous resolves to the same registry
-              order whether or not the schedule is available yet. */}
-          <p className="a3-sched-back">
-            <Button
-              variant="secondary"
-              onClick={() => s.openConfiguratorStepAt(CONFIGURATOR_STEP.RESPONSIBILITY)}
-            >
-              {t('vr3.schedule.action.toResponsibility')}
-            </Button>
-          </p>
-        </ActionGate>
-      </div>
-    )
-  }
+  if (!available) return <ScheduleLockedGate />
 
   const totalHalfMonths = derivation.totalHalfMonths
   const span = totalHalfMonths ?? 0
@@ -245,14 +265,13 @@ export function ScheduleStage() {
   const stageStatus = STAGE_STATUS[stage]
 
   return (
-    <div className="px-7 py-6">
+    <div className="py-6">
       {/* The SAME stage anatomy the six KG pages and the scope ledger use —
           position above name, lead below, state on the right. One learned
           header across the whole configuration, which is also exactly the
           composition the approved frame shows. */}
       <div className="a3-kgp-head">
         <div className="a3-kgp-identity">
-          <p className="a3-cap">{t('vr3.schedule.eyebrow')}</p>
           <h1 className="a3-kgp-title" data-page-heading tabIndex={-1} ref={heading}>
             {t('vr3.schedule.heading.stage')}
           </h1>
@@ -432,15 +451,6 @@ export function ScheduleStage() {
         )}
         actions={(
           <>
-            {/* VR3-TGA-UX-00: the step before the schedule is Schnittstellen &
-                Verantwortung. Previous resolves to the same registry order the
-                spine and the KG 700 dock use. */}
-            <Button
-              variant="secondary"
-              onClick={() => s.openConfiguratorStepAt(CONFIGURATOR_STEP.RESPONSIBILITY)}
-            >
-              {t('vr3.schedule.action.toResponsibility')}
-            </Button>
             <Button
               variant="primary"
               disabled={!readyToConfirm}

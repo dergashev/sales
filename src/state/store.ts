@@ -2,14 +2,18 @@ import { createStore } from 'zustand/vanilla'
 import { useStore as useZustandStore } from 'zustand'
 import { Decimal } from 'decimal.js'
 import demo from '../fixtures/demo-0001.json'
+import { LOCKED_NAV_VARIANT } from '../lib/variantLock'
 import {
   advanceJob,
   cancelJob,
   demoProject,
   initialProjectAnalyses,
+  initialProjectAnalysis,
   projectBaselineSnapshot,
   readiness,
   recordQuestionResponse,
+  confirmEvidence,
+  overrideEvidence,
   removeDocument as removeAnalysisDocument,
   reopenConflict,
   replaceDocument as replaceAnalysisDocument,
@@ -31,6 +35,8 @@ import {
 import {
   KG_SCOPE_GROUPS,
   initialDecisions as initialKgDecisions,
+  withBaselineIncluded as withKgBaselineIncluded,
+  KG_DECIDED_SCOPE_GROUPS,
   kgCatalogue,
   kgCatalogues,
   kgChapterProgress,
@@ -95,10 +101,26 @@ import {
  * measured on the released `openOption`.
  */
 import { optionNav, optionOpenDestination } from './optionLifecycle'
+import { BASE_OPTION_AUTO_NAME, isAutoBaseName } from './optionNaming'
+import type { MatrixColumn, MatrixMark, MatrixMarks } from './interfaceMatrix'
+import { MATRIX_GROUPS, flattenMatrix } from './interfaceMatrix'
+
+/** The sheet, by position number — the mark a departure is measured against. */
+const MATRIX_INDEX = new Map(flattenMatrix(MATRIX_GROUPS).map((row) => [row.nr, row]))
 import {
   optionCommercialProjection,
   type OptionCommercialProjection,
 } from './optionCommercialProjection'
+import {
+  BAUZEIT_INITIAL_STATE,
+  applyBauzeitModelPatch,
+  bauzeitResult,
+} from './optionBauzeit'
+import type {
+  BauzeitBuildingParamEdit,
+  BauzeitModelPatch,
+} from './optionBauzeit'
+import type { BauzeitModel } from '../engine/bauzeit'
 import {
   buildingScopeFingerprint,
   buildingScopeSaved as scopeIsSaved,
@@ -288,10 +310,16 @@ import {
   clearPersistedProposal,
   loadPersistedProposal,
   prunePersistedProposals,
+  ANALYSES_KEY,
+  clearLastProjectId,
   readLastProjectId,
+  readNavVariant,
+  readProjectAnalyses,
+  writeProjectAnalyses,
   savePersistedProposal,
   serializeProposalPayload,
   writeLastProjectId,
+  writeNavVariant,
   type StorageLike,
 } from './persistence'
 
@@ -580,6 +608,17 @@ export type OptionConfig = {
   /** Fingerprint of the six scope decisions at the moment they were confirmed. */
   kgScopeConfirmedFingerprint: string | null
   /**
+   * Departures from the Schnittstellenmatrix, per Option.
+   *
+   * It belongs to the Option, not to the store's flat state, for the reason
+   * every other configuration field does: two Options are two answers to the
+   * same question, and a mark that followed the reader from one into the
+   * other would be the first field in this product that silently did.
+   * Empty is the honest starting state — the sheet's own marks are in the
+   * fixture, and an Option that never touched one has decided nothing.
+   */
+  interfaceMatrix: MatrixMarks
+  /**
    * VR3-TGA-UX-00 — the Option's interface/responsibility record, the ONE
    * editable owner of `Schnittstellen & Verantwortung` (`engine/
    * responsibility.ts`). Seeded from the project catalogue when the Option is
@@ -677,7 +716,7 @@ const OPTION_CONFIG_KEYS = [
   'scopeCatalogChoices', 'scopeCatalogProvenance', 'scopeCatalogQuantities',
   'kg800ClientRevealed',
   'scopeBoundariesConfirmedFingerprint',
-  'kgConfig', 'kgScopeConfirmedFingerprint', 'responsibility', 'fields',
+  'kgConfig', 'kgScopeConfirmedFingerprint', 'interfaceMatrix', 'responsibility', 'fields',
   'esConfirmed', 'regionalfaktorActive', 'risikoAktiv',
   'openConfiguratorStep', 'visitedConfiguratorSteps', 'scopeBuildingId', 'discountPercent',
   'offerDraft', 'constructionStartDate',
@@ -703,7 +742,7 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
   | 'scopeCatalogChoices' | 'scopeCatalogProvenance' | 'scopeCatalogQuantities'
   | 'kg800ClientRevealed'
   | 'scopeBoundariesConfirmedFingerprint'
-  | 'kgConfig' | 'kgScopeConfirmedFingerprint' | 'responsibility'
+  | 'kgConfig' | 'kgScopeConfirmedFingerprint' | 'interfaceMatrix' | 'responsibility'
   | 'esConfirmed' | 'regionalfaktorActive' | 'risikoAktiv' | 'discountPercent'
   | 'constructionStartDate'
   | 'scopeBuildings' | 'scopeSelected' | 'scopeEdits' | 'scopeConfirmations'
@@ -716,7 +755,8 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
     | 'configurationVisitedChapters' | 'scopeBoundariesConfirmedFingerprint'
     | 'constructionStartDate' | 'kg700ModeAutoFallback'
     | 'scopeCatalogChoices' | 'scopeCatalogProvenance' | 'scopeCatalogQuantities'
-    | 'kg800ClientRevealed' | 'kgConfig' | 'kgScopeConfirmedFingerprint' | 'responsibility'
+    | 'kg800ClientRevealed' | 'kgConfig' | 'kgScopeConfirmedFingerprint'
+    | 'interfaceMatrix' | 'responsibility'
     | 'schedulePhases' | 'scheduleEdits' | 'scheduleStartDate'
     | 'schedulePlannedCompletion' | 'scheduleDependencyConfirmed'
     | 'scheduleConfirmation' | 'reviewAcknowledged' | 'reviewConfirmation'
@@ -775,6 +815,8 @@ type PersistedProposalConfig = Omit<Pick<OptionConfig,
      */
     kgConfig?: KgDecisions | null
     kgScopeConfirmedFingerprint?: string | null
+    /** Absent in every Option saved before the matrix existed: no departures. */
+    interfaceMatrix?: MatrixMarks
     /**
      * VR3-TGA-UX-00 — the responsibility record. Optional as a matter of
      * shape: an Option saved before this contract has none, and
@@ -813,7 +855,7 @@ const PERSISTED_CONFIG_KEYS = [
   'scopeCatalogChoices', 'scopeCatalogProvenance', 'scopeCatalogQuantities',
   'kg800ClientRevealed',
   'scopeBoundariesConfirmedFingerprint',
-  'kgConfig', 'kgScopeConfirmedFingerprint', 'responsibility', 'esConfirmed',
+  'kgConfig', 'kgScopeConfirmedFingerprint', 'interfaceMatrix', 'responsibility', 'esConfirmed',
   'regionalfaktorActive', 'risikoAktiv', 'discountPercent',
   'constructionStartDate',
   'scopeBuildings', 'scopeSelected', 'scopeEdits', 'scopeConfirmations',
@@ -837,6 +879,7 @@ const LEGACY_PERSISTED_CONFIG_KEYS = PERSISTED_CONFIG_KEYS.filter(
     && key !== 'kg800ClientRevealed'
     && key !== 'kgConfig'
     && key !== 'kgScopeConfirmedFingerprint'
+    && key !== 'interfaceMatrix'
     && key !== 'responsibility'
     && key !== 'schedulePhases'
     && key !== 'scheduleEdits'
@@ -858,6 +901,20 @@ function capturePersistedConfig(
 
 type PersistedProposalPayload = {
   active: PersistedProposalConfig
+  /**
+   * THE PROJECT BASELINE THE OPEN OPTIONS INHERITED.
+   *
+   * It belongs to the PROJECT, not to one Option's configuration, which is
+   * why it sits beside `buildingConflicts` rather than inside `active`.
+   * Optional: a payload written before this field existed restores without
+   * it, exactly as `projectParamsConfirmed` does.
+   *
+   * Leaving it out was a real defect, not a gap in coverage: the snapshot
+   * lives only in memory, so a reload emptied it and `Final Validation`
+   * then reported `Diese Option trägt keine Projektgrundlage` — a blocking
+   * issue about an Option that HAD one, produced by the reload alone.
+   */
+  projectBaseline?: ProjectBaselineSnapshot | null
   options: Array<{ id: string; name: string }>
   activeOptionId: string | null
   optionSeq: number
@@ -1085,6 +1142,19 @@ const CUSTOMER_CONFIRMATION_ACTOR = 'customer confirmation'
  * fabricated person — an invented name would be a worse lie than a role.
  */
 const SCOPE_ACTOR = 'A. Muster'
+/**
+ * The attribution of a scope nobody confirmed by hand.
+ *
+ * A single-building Option has its base confirmed and saved at creation
+ * (decision of the prototype's owner, 13.09) — the step was two clicks of
+ * pure ceremony when there is nothing to choose between. The attribution
+ * then MUST say so: writing `SCOPE_ACTOR` here would put a person's name on
+ * a confirmation that person never gave, which is the fabricated human
+ * truth the actor field exists to prevent. `Final Validation` no longer sees
+ * an open blocker for these Options — that is the accepted cost of the
+ * decision, and this string is what keeps the record honest about it.
+ */
+const AUTO_SCOPE_ACTOR = 'automatisch · ein Gebäude, keine Abweichungen'
 
 /** `2027-03-15` → `15.03.2027`. Journal labels are German by contract. */
 function germanDate(iso: string): string {
@@ -1275,6 +1345,7 @@ function defaultOptionConfig(coverage: Coverage = INITIAL_COVERAGE): OptionConfi
     scopeBoundariesConfirmedFingerprint: null,
     kgConfig: null,
     kgScopeConfirmedFingerprint: null,
+    interfaceMatrix: {},
     responsibility: null,
     fields: legacyFieldsFromReview(INITIAL_REVIEW),
     esConfirmed: false,
@@ -1711,7 +1782,7 @@ function isSavedOptionVersion(value: unknown): value is SavedOptionVersion {
 const PERSISTED_PROPOSAL_PAYLOAD_KEYS = [
   'active', 'options', 'activeOptionId', 'optionSeq', 'optionConfigs',
   'buildingConflicts', 'projectParamsConfirmed', 'snapshots',
-  'savedOptionVersions', 'opportunityId',
+  'savedOptionVersions', 'opportunityId', 'projectBaseline',
 ] as const
 
 const OFFER_SNAPSHOT_KEYS = [
@@ -1763,7 +1834,15 @@ function isPersistedProposalPayload(value: unknown): value is PersistedProposalP
           Array.isArray(versions) && versions.every(isSavedOptionVersion))))
     // VR3-03R: optional, so a payload saved before the fix still restores.
     || (value.opportunityId !== undefined && value.opportunityId !== null
-      && typeof value.opportunityId !== 'string')) return false
+      && typeof value.opportunityId !== 'string')
+    // The baseline is checked for the two facts everything downstream reads
+    // — which project it is of, and when it was taken. A snapshot that
+    // cannot answer those is not a baseline, and restoring it would be
+    // worse than restoring none.
+    || (value.projectBaseline !== undefined && value.projectBaseline !== null
+      && (!record(value.projectBaseline)
+        || typeof value.projectBaseline.projectId !== 'string'
+        || typeof value.projectBaseline.at !== 'string'))) return false
 
   const options = value.options
   if (!options.every((option) => record(option)
@@ -1797,6 +1876,10 @@ function isPersistedProposalPayload(value: unknown): value is PersistedProposalP
 function restoredOptionConfig(
   persisted: PersistedProposalConfig,
   conflicts: Record<string, BuildingConflict>,
+  /** The project the payload belongs to — the caller knows it; a payload is
+   *  never allowed to answer that question for itself. It resolves the
+   *  catalogue the baseline normalisation needs. */
+  projectId: string,
 ): OptionConfig {
   const base = defaultOptionConfig()
   // #16 Part 8: normalize each building's `storeyStructure` fact BEFORE it
@@ -1835,11 +1918,23 @@ function restoredOptionConfig(
     // decisions contradict — and `migrateCoverage`'s legacy "unknown reads as
     // excluded" rule, correct while nothing could express undecided, must not
     // erase a decision the user has genuinely not made yet.
+    /**
+     * A payload written while the ledger still asked six questions can carry
+     * `undecided` on a group that is no longer asked. Normalising it AT THE
+     * DOOR is the only place that works: leaving it would park such an
+     * Option behind a gate with no control left to open it, and coverage is
+     * derived from the same normalised set so the two cannot disagree.
+     */
     coverage: persisted.kgConfig
-      ? coverageFromKgDecisions(persisted.kgConfig)
+      ? coverageFromKgDecisions(
+        withKgBaselineIncluded(persisted.kgConfig, kgCatalogue(projectId)),
+      )
       : migrateCoverage(persisted.coverage),
-    kgConfig: persisted.kgConfig ?? null,
+    kgConfig: persisted.kgConfig
+      ? withKgBaselineIncluded(persisted.kgConfig, kgCatalogue(projectId))
+      : null,
     kgScopeConfirmedFingerprint: persisted.kgScopeConfirmedFingerprint ?? null,
+    interfaceMatrix: persisted.interfaceMatrix ?? {},
     // VR3-TGA-UX-00: `null` here is the legacy state `responsibilityFor`
     // reads through its adapter. Nothing is seeded on rehydrate on purpose —
     // a restore must not manufacture a record the user never had.
@@ -1907,6 +2002,7 @@ function capturePersistedProposal(state: Store): PersistedProposalPayload {
     // VR2-08 (M-3): already-frozen values — a plain reference is enough,
     // JSON serialisation does the actual copying on the way to storage.
     snapshots: state.snapshots,
+    projectBaseline: state.projectBaseline,
     savedOptionVersions: Object.fromEntries(
       Object.entries(state.savedOptionVersions).map(([id, versions]) => [id, [...versions]]),
     ),
@@ -2064,6 +2160,8 @@ export type Store = {
   /** See the matching field on `OptionConfig` for the full contract. */
   kgConfig: KgDecisions | null
   kgScopeConfirmedFingerprint: string | null
+  /** See the matching field on `OptionConfig` for the full contract. */
+  interfaceMatrix: MatrixMarks
   /** See the matching field on `OptionConfig` for the full contract. */
   responsibility: OptionResponsibility | null
   /**
@@ -2394,6 +2492,18 @@ export type Store = {
    */
   gateOpen: boolean
   /**
+   * The ONE decision an edit route is travelling to (VR3-04 / owner,
+   * 16.09.2026).
+   *
+   * A one-shot navigation intent, NOT configuration: it is read once by the
+   * KG chapter, which opens the system holding that decision and puts focus
+   * on it, and is cleared the moment it has been honoured. It is therefore
+   * deliberately outside `OptionConfig` — persisting it would make a
+   * reloaded Option jump to a decision nobody asked for — and it writes no
+   * journal event, because nothing about the Option changes (M-4).
+   */
+  kgFocusServiceId: string | null
+  /**
    * Идёт ли онбординг-тур (DC-14). Только внутреннее пространство: тур
    * объясняет работу инструмента, а не оффер, и клиенту не адресован.
    */
@@ -2408,6 +2518,38 @@ export type Store = {
    * пункт чек-листа G6-gate, не переопределение.
    */
   density: 'komfortabel' | 'kompakt'
+  /**
+   * НАВИГАЦИОННЫЙ ВАРИАНТ — предпочтение читателя, ровно как `density`.
+   *
+   * `v1` — выпущенная схема «две мастерские, один шов»: горизонтальный
+   * рельс того уровня, чьими данными владеет стадия (проектный — три
+   * стадии, Option — четыре), и в каждый момент смонтирован ровно один.
+   * `v2` — сравнительный вариант для sales-теста: один вертикальный рельс
+   * слева, показывающий путь целиком — три стадии проекта и, когда Option
+   * открыта, её стадии следом.
+   *
+   * ЭТО НЕ ОТМЕНА РЕШЕНИЯ АУДИТА ОТ 06.09 (см. шапку `WorkflowSpine.tsx`):
+   * правило «стадия появляется только в рельсе того уровня, который владеет
+   * её данными» продолжает действовать для `v1`, который остаётся
+   * умолчанием. `v2` существует как ОДИН экземпляр того же канонического
+   * `WorkflowNavigator` в вертикальной ориентации — не вторая навигация со
+   * своей грамматикой, а другая раскладка тех же стадий с теми же
+   * состояниями, — и мостит ровно тот разрыв, на который жалуется аудит:
+   * один `nav`-ориентир вместо двух, сменяющих друг друга на границе.
+   */
+  navVariant: 'v1' | 'v2' | 'v3' | 'v4'
+  /**
+   * VR3 · Variante `v3` — das ÜBERNOMMENE Terminmodell des Bauzeit-Rechners.
+   *
+   * `v3` navigiert wie `v2`; der einzige Unterschied ist die Stufe
+   * „Terminplan“, die dort nicht den geerbten Fixture-Phasenplan, sondern
+   * das gerechnete Modell aus `src/engine/bauzeit.ts` zeigt. Die Kalibrierung
+   * und die Gebäudeparameter leben deshalb hier und NICHT in
+   * `OptionScheduleState`: `v2` bleibt unberührt.
+   */
+  bauzeitModel: BauzeitModel
+  /** Nutzereingaben je Gebäude; alles Fehlende kommt aus dem Baseline-Gebäude. */
+  bauzeitBuildingParams: Readonly<Record<string, BauzeitBuildingParamEdit>>
   openConfiguratorStep: ConfiguratorStepId
   /**
    * Construction Period (тикет KG300/400/700 + Bauzeit-Reise): vom Vertrieb
@@ -2579,6 +2721,12 @@ export type Store = {
   recordProjectQuestionResponse: (
     questionId: string, kind: 'answer' | 'assumption',
   ) => void
+  /** Confirms one extracted value, with the actor and the time on the record. */
+  confirmProjectEvidence: (itemId: string) => void
+  /** Record a value a person typed in place of the extracted one. */
+  overrideProjectEvidence: (itemId: string, value: string) => void
+  /** Withdraw a manual value, so the extracted one stands again. */
+  clearProjectEvidenceOverride: (itemId: string) => void
   /** Commits the project baseline snapshot Option creation consumes. */
   commitProjectBaseline: () => void
   beginOptionCreation: () => void
@@ -2605,6 +2753,15 @@ export type Store = {
    * (снапшот, M-3) Option. См. docstring реализации.
    */
   renameOption: (id: string, name: string) => void
+  /**
+   * Удаление Option. Базовая (первая в списке) не удаляется никогда — от
+   * неё отходят остальные; уже отправленная тоже: снапшот неизменяем (M-3).
+   * Журналируется как всё остальное (M-4), отмена возвращает Option вместе
+   * с её конфигурацией.
+   */
+  deleteOption: (id: string) => void
+  /** Почему `deleteOption` откажет, или `null`, если удаление разрешено. */
+  optionDeleteBlock: (id: string) => 'base' | 'sent' | null
   openOption: (id: string) => void
   /**
    * REDESIGN R3: switch which Option is PRESENTED in Kundenansicht.
@@ -2720,6 +2877,15 @@ export type Store = {
   setKgServiceDecision: (serviceId: string, decision: KgServiceDecisionRecord) => void
   /** Records the confirmation of the six decisions. It does not gate them. */
   confirmKgScope: () => void
+  /**
+   * One assignment in the Schnittstellenmatrix, set by hand.
+   *
+   * A mark equal to the sheet's own value is not stored as a departure —
+   * setting a box back to what the contract says is a RETRACTION of a
+   * decision, and leaving a copy of the source value behind would make the
+   * next import look like a conflict with itself.
+   */
+  setInterfaceMatrixMark: (nr: string, column: MatrixColumn, mark: MatrixMark) => void
   /** Opens one KG chapter, refusing an excluded or still-locked one. */
   openKgChapter: (group: KgScopeGroup) => void
   /** Ручной ввод количественного драйвера (§7 приложения) — десятичная строка. */
@@ -2762,7 +2928,19 @@ export type Store = {
    * is the single explicit confirmation that makes Save available.
    */
   acknowledgeReviewSection: (sectionId: ReviewSectionId) => void
+  /** Den ganzen Bogen in EINEM Schritt als geprüft vermerken. */
+  acknowledgeAllReviewSections: () => void
   setReviewFocusSection: (sectionId: ReviewSectionId | null) => void
+  /** The KG chapter reports the focus intent honoured (or abandoned). */
+  setKgFocusService: (serviceId: string | null) => void
+  /**
+   * Leave the review for ONE decision of a KG chapter, remembering the
+   * section to come back to — the same return contract as
+   * `openReviewIssueRoute`, one level deeper.
+   */
+  openKgServiceDecision: (
+    sectionId: ReviewSectionId, group: KgScopeGroup, serviceId: string,
+  ) => void
   confirmFinalValidation: () => void
   /** Return to the stage that owns one section's data, and come back to it. */
   openReviewIssueRoute: (sectionId: ReviewSectionId) => void
@@ -2781,6 +2959,13 @@ export type Store = {
   clearOptionSaveError: () => void
   setUiLanguage: (l: 'de' | 'en') => void
   setDensity: (d: 'komfortabel' | 'kompakt') => void
+  setNavVariant: (v: 'v1' | 'v2' | 'v3' | 'v4') => void
+  /** `v3`: einen Gebäudeparameter des Terminmodells setzen. */
+  setBauzeitBuildingParam: (buildingId: string, patch: BauzeitBuildingParamEdit) => void
+  /** `v3`: die Modellkalibrierung ändern (flach oder in einer Untergruppe). */
+  setBauzeitModel: (patch: BauzeitModelPatch) => void
+  /** `v3`: die Kalibrierung auf den Auslieferungsstand zurücksetzen. */
+  resetBauzeitModel: () => void
   /** Экран конвейера — konfigurator/vergleich/export/… (UI-состояние). */
   setPipelineView: (v: PipelineView) => void
   /** Ворота выдачи: единственный путь во внешний профиль (DC-33). */
@@ -3132,6 +3317,33 @@ export function buildingConfirmed(
  * session from before this ticket), so nothing that used to open loses its
  * way in.
  */
+/**
+ * DOES ENTERING THIS STEP START THE PRICING?
+ *
+ * One rule, one place. Pricing begins on ENTERING Leistungsabgrenzung —
+ * identity, not position, so a chapter reorder cannot silently move it —
+ * provided the configuration mode is settled and not being edited.
+ *
+ * It exists as a function because entering that step happens through TWO
+ * doors: `openConfiguratorStepAt`, and `openOption` landing directly on the
+ * destination the collection named. The second door used to be harmless:
+ * every route into Leistungsabgrenzung passed the Konfigurator gate first,
+ * and the gate started pricing itself. With the gate gone for a
+ * single-building Option, that door became the normal way in — and it did
+ * not know the rule, so the Option opened on the right screen with no price
+ * behind it.
+ */
+function pricingStartedAfterStep(
+  s: Pick<Store, 'pricingStarted' | 'configurationModeChosen' | 'configurationModeEditing'>,
+  stepId: ConfiguratorStepId,
+): boolean {
+  return s.pricingStarted || (
+    s.configurationModeChosen
+      && !s.configurationModeEditing
+      && stepId === CONFIGURATOR_STEP.SCOPE_BOUNDARIES
+  )
+}
+
 export function canBeginConfiguration(
   s: Pick<Store, 'buildings' | 'included' | 'buildingReviews'
     | 'buildingConfirmation' | 'buildingConflicts'> & Partial<BuildingScopeState>,
@@ -3337,18 +3549,22 @@ export function kgScopeStatus(
     : 'recheck'
 }
 
-/** How many of the six decisions are explicit. */
+/** How many of the ASKED decisions are explicit (`KG_DECIDED_SCOPE_GROUPS`). */
 export function kgDecidedScopeCount(s: Pick<Store, 'kgConfig'>): number {
   return s.kgConfig
-    ? KG_SCOPE_GROUPS.filter((g) => s.kgConfig!.scope[g] !== 'undecided').length
+    ? KG_DECIDED_SCOPE_GROUPS
+      .filter((g) => s.kgConfig!.scope[g] !== 'undecided').length
     : 0
 }
 
 /**
- * The gate every KG chapter sits behind: six explicit decisions.
+ * The gate every KG chapter sits behind: the asked decisions, all explicit.
  *
- * Not "six decisions AND a confirmation": the state machine's transition is
- * `six of six decided → first included KG available`, and adding a second
+ * Three of them since 13.09 — the other three cost groups are included by
+ * baseline and are not asked (`KG_DECIDED_SCOPE_GROUPS`).
+ *
+ * Not "decisions AND a confirmation": the state machine's transition is
+ * `all asked decided → first included KG available`, and adding a second
  * lock would be the extra unmodelled gate the target explicitly refuses.
  * The confirmation exists, is journalled, and drives the "changed since you
  * confirmed it" notice — it does not gate the work twice.
@@ -3679,6 +3895,22 @@ export function scheduleDerivationFor(s: Store) {
   return scheduleDerivation(s, optionScheduleBuildingIds(s))
 }
 
+/**
+ * VR3 · `v3` — das gerechnete Terminmodell der Option.
+ *
+ * Der Projektbeginn ist derselbe, den `v2` bearbeitet (`scheduleStartDate`,
+ * ersatzweise der Bauanker der Option): ZWEI Startdaten für einen
+ * Terminplan wären zwei Wahrheiten über dieselbe Option. Die Gesamtsumme
+ * ist die kaufmännische der Option, nie ein zweiter Preis je m².
+ */
+export function bauzeitStartFor(s: Store): string {
+  return s.scheduleStartDate ?? s.constructionStartDate ?? demo.schedule.epoch.date
+}
+
+export function bauzeitResultFor(s: Store) {
+  return bauzeitResult(s, commercialResult(s).total.exact, bauzeitStartFor(s))
+}
+
 export function scheduleIssuesFor(s: Store): ScheduleIssue[] {
   return scheduleIssues(s, optionScheduleBuildingIds(s))
 }
@@ -3787,14 +4019,27 @@ export function reviewSectionInputsFor(s: Store): ReviewSectionInput[] {
       sectionId: 'scopeDecisions',
       severity: 'blocker',
       messageKey: 'vr3.review.issue.scopeDecisionsOpen',
-      values: { decided: kgDecidedScopeCount(s), total: KG_SCOPE_GROUPS.length },
+      values: {
+        decided: kgDecidedScopeCount(s), total: KG_DECIDED_SCOPE_GROUPS.length,
+      },
       route: 'scopeBoundaries',
     }])
 
-  // 4–9 — one section per cost group. An EXCLUDED group is a section too:
-  // "out of scope by decision" is exactly the kind of thing a reviewer has
-  // to see and acknowledge, and hiding it would be the D-016 defect again.
-  for (const group of KG_SCOPE_GROUPS) {
+  /**
+   * 4–6 — one section per ASKED cost group.
+   *
+   * An EXCLUDED group is still a section: "out of scope by decision" is
+   * exactly what a reviewer has to see and acknowledge, and hiding it would
+   * be the D-016 defect again.
+   *
+   * A BASELINE group (KG 200/500/600) is not, since 13.09. Nobody decided
+   * it and nobody configured it — it is part of every All3 offer — so a
+   * review row for it asked the reviewer to confirm a decision that was
+   * never theirs, three times, and stood between them and the three that
+   * were. The amounts stay in the commercial result, in the cost detail and
+   * in the client output, where a settled group belongs.
+   */
+  for (const group of KG_DECIDED_SCOPE_GROUPS) {
     const sectionId = `kg${group.slice(3)}` as ReviewSectionId
     const progress = kgChapterProgressFor(s, group)
     const decision = decisions?.scope[group] ?? 'undecided'
@@ -3880,13 +4125,17 @@ export function reviewSectionInputsFor(s: Store): ReviewSectionInput[] {
         values: { assumption: id },
         route: 'project',
       })),
-      ...(s.regionalfaktorActive ? [] : [{
-        id: 'regionalfaktorInactive',
-        sectionId: 'assumptions' as ReviewSectionId,
-        severity: 'permittedWarning' as const,
-        messageKey: 'vr3.review.issue.regionalfaktorInactive',
-        route: 'scopeBoundaries' as ReviewIssue['route'],
-      }]),
+      // Der abgeschaltete Regionalfaktor ist KEIN Befund mehr.
+      //
+      // Dieser Abschnitt führt ihn eine Zeile höher bereits als Tatsache
+      // ("Regionalfaktor · nicht aktiviert"), und D-15 sagt, dass genau das
+      // der Normalfall ist: gerechnet wird auf dem Bundesdurchschnitt, und
+      // die Aktivierung ist die Ausnahme. Eine Warnung neben der Zeile, die
+      // dasselbe sagt, machte den Regelfall zum Vorfall — und dieselbe
+      // Auskunft an zwei Stellen ist die Art Wiederholung, die einen langen
+      // Prüfbogen unlesbar macht. Sichtbar bleibt der Faktor überall dort,
+      // wo D-15 es verlangt: in der Zeile hier, im Kostentreiber und im
+      // Herkunft-Popover.
     ])
 
   // 13 — the canonical commercial result. A result whose own composition
@@ -6048,6 +6297,7 @@ const store = createStore<Store>((set, get) => {
     optionConfigs: {},
     pipelineView: 'buildingScope',
     gateOpen: false,
+    kgFocusServiceId: null,
     tourOpen: false,
     printOpen: false,
     journal: [],
@@ -6108,6 +6358,25 @@ const store = createStore<Store>((set, get) => {
     commercialPendingCount: 0,
     commercialFault: false,
     density: 'komfortabel',
+    /**
+     * The reader's own choice survives a reload — it is a preference, and a
+     * preference that resets every time the page reloads is not one. `v1`
+     * stays the answer when storage is empty or unreadable (private window,
+     * blocked site data), so the released navigation is what a first visit
+     * and a failed read both get.
+     */
+    navVariant: (() => {
+      // A published build pins the variant (see `variantLock.ts`); locally
+      // and under the runner this is `null` and the preference decides.
+      if (LOCKED_NAV_VARIANT) return LOCKED_NAV_VARIANT
+      const storage = browserProposalStorage()
+      return (storage && readNavVariant(storage)) ?? 'v1'
+    })(),
+
+    /* VR3 · `v3`: die Kalibrierung startet auf dem Auslieferungsstand des
+       Rechners, die Gebäudeparameter leer — jeder Wert ist dann ein
+       Vorschlag aus dem Gebäude selbst und als solcher gekennzeichnet. */
+    ...BAUZEIT_INITIAL_STATE,
 
     projection: () => computeProjection(get()),
 
@@ -6815,15 +7084,7 @@ const store = createStore<Store>((set, get) => {
         // which chapter is open.
         preview: null,
         activeBuildingId,
-        pricingStarted: s.pricingStarted || (
-          s.configurationModeChosen
-            && !s.configurationModeEditing
-            // Identity, not position (ticket "MAKE SCOPE BOUNDARIES THE
-            // AUTHORITATIVE CONFIGURATOR ENTRY STEP"): pricing starts on
-            // ENTERING Leistungsabgrenzung, never on a literal chapter
-            // number that would silently go stale on the next reorder.
-            && stepId === CONFIGURATOR_STEP.SCOPE_BOUNDARIES
-        ),
+        pricingStarted: pricingStartedAfterStep(s, stepId),
         scopeBuildingId: buildingScoped && s.configurationMode === 'PER_BUILDING'
           ? activeBuildingId
           : null,
@@ -6884,23 +7145,19 @@ const store = createStore<Store>((set, get) => {
           contextRef: 'DEMO-SC-01 · Vorschau-Lauf DEMO-RUN-0009',
           futureLabel: out.futureLabel,
         },
-        // AUD-01 (EXP-01/EXP-02, live Playwright finding): `.a3-preview`
-        // and `.a3-delta` share one absolutely-positioned anchor on the
-        // documented assumption that they are "mutually exclusive in
-        // time" (components-core.md §13) — true for fixation clearing the
-        // preview (`apply()`, above), but nothing enforced the OTHER
-        // direction: hovering a genuinely new option WHILE a just-
-        // committed delta chip is still in its display window left BOTH
-        // visible at the identical coordinates, chip painting over the
-        // preview's own first line (later in DOM order wins with no
-        // z-index set on either). A fresh hover-preview is the more
-        // urgent, actionable claim ("what would THIS choice do" beats
-        // "what did I just do") — entering it dismisses the chip early,
-        // matching the priority this ticket's own contract addition
-        // documents (preview > chip > caption). The chip's underlying
-        // journal entry is already recorded via `apply()` at commit time;
-        // this only shortens its OWN visual display, never the record.
-        activeDelta: null,
+        // PRIORITY REVERSED (PO, 16.09.2026). This used to clear
+        // `activeDelta` here, so that a fresh hover dismissed a still-
+        // displayed delta chip early — the "preview > chip" order of
+        // components-core.md §13. Observed in use, that is exactly
+        // backwards: after a click the pointer immediately travels toward
+        // the NEXT option, and that travel extinguished the result of the
+        // click the reader had not finished reading. The chip is a
+        // statement about something that HAPPENED and owns its four
+        // seconds (DC-2); the preview is a hypothesis and can wait under
+        // it. The two no longer fight for the same paint: they share one
+        // grid cell in the reserved slot with an explicit layer order
+        // (`--layer-change-result` above `--layer-change-preview`), so
+        // both may be live at once without overlapping illegibly.
       })
     },
 
@@ -7109,6 +7366,28 @@ const store = createStore<Store>((set, get) => {
 
     openOptionsStage: () => {
       const s = get()
+      /**
+       * THE EMPTY COLLECTION IS NOT A DESTINATION.
+       *
+       * A project arriving from Projektverständnis has exactly one thing to
+       * do next — create the first Option — and the screen that said so was
+       * a page whose whole content was one button repeating the step the
+       * reader had just taken. So the first Option is created on the way in
+       * and the collection opens with it already listed.
+       *
+       * It is `createOption`, not a second creation path: the same gate is
+       * re-read, the same baseline is committed first, the same journalled
+       * event is written, and the same monotonic name and id are used. Only
+       * the trigger is different, and the entry is indistinguishable from a
+       * clicked one — which is why it is safe to undo exactly like one.
+       *
+       * The gate closing is still a real answer: if `canCreateOptions` is
+       * false, or creation fails, the collection opens as before and states
+       * what is missing rather than silently doing nothing.
+       */
+      if (s.options.length === 0 && s.canCreateOptions()) {
+        if (get().createOption()) return
+      }
       set({
         ...NO_TRANSIENT,
         ...leaveOptionWorkspace(s),
@@ -7373,6 +7652,106 @@ const store = createStore<Store>((set, get) => {
     },
 
     /**
+     * Confirming a derived value is a commercial act, so it is an event.
+     *
+     * The extracted record itself is never edited — the confirmation is
+     * stored beside it with the actor and the instant, and the reading
+     * surfaces project it over the fixture. Undo removes the confirmation,
+     * which is the inverse event, not a deletion of history (DC-29).
+     */
+    confirmProjectEvidence: (itemId) => {
+      const s = get()
+      const project = demoProject(s.opportunityId)
+      if (!project) return
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis) return
+      const item = project.evidence.find((entry) => entry.id === itemId)
+      if (!item) return
+      const previous = analysis
+      const next = confirmEvidence(
+        analysis, itemId, 'sales-user', new Date().toISOString(),
+      )
+      if (next === analysis) return
+      const write = (value: ProjectAnalysis) => set({
+        projectAnalyses: { ...get().projectAnalyses, [project.id]: value },
+      })
+      write(next)
+      apply({
+        kind: 'value.edited',
+        label: `Wert bestätigt · ${itemId}`,
+        labelKey: 'vr3.journal.evidenceConfirmed',
+        labelValues: { item: itemId },
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      }, null)
+    },
+
+    /**
+     * A value a person typed is the same class of act as a confirmation,
+     * and is recorded the same way: one journalled event, attribution
+     * included, the extracted record left intact beneath it. Undo removes
+     * the manual value and the extracted one stands again (DC-29).
+     */
+    overrideProjectEvidence: (itemId, value) => {
+      const s = get()
+      const project = demoProject(s.opportunityId)
+      if (!project) return
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis) return
+      const trimmed = value.trim()
+      if (trimmed === '') return
+      const item = project.evidence.find((entry) => entry.id === itemId)
+      if (!item) return
+      const previous = analysis
+      const next = overrideEvidence(
+        analysis, itemId, trimmed, 'sales-user', new Date().toISOString(),
+      )
+      const write = (v: ProjectAnalysis) => set({
+        projectAnalyses: { ...get().projectAnalyses, [project.id]: v },
+      })
+      write(next)
+      apply({
+        kind: 'value.edited',
+        label: `Wert manuell erfasst · ${itemId}`,
+        labelKey: 'vr3.journal.evidenceOverridden',
+        labelValues: { item: itemId },
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      }, null)
+    },
+
+    /**
+     * Going back to the document's own value is a decision too, and is
+     * journalled as one: the manual value is withdrawn, never quietly
+     * dropped, and Undo restores it.
+     */
+    clearProjectEvidenceOverride: (itemId) => {
+      const s = get()
+      const project = demoProject(s.opportunityId)
+      if (!project) return
+      const analysis = s.projectAnalyses[project.id]
+      if (!analysis?.evidenceOverrides[itemId]) return
+      const previous = analysis
+      const { [itemId]: _dropped, ...rest } = analysis.evidenceOverrides
+      const next: ProjectAnalysis = { ...analysis, evidenceOverrides: rest }
+      const write = (v: ProjectAnalysis) => set({
+        projectAnalyses: { ...get().projectAnalyses, [project.id]: v },
+      })
+      write(next)
+      apply({
+        kind: 'value.edited',
+        label: `Eigener Wert verworfen · ${itemId}`,
+        labelKey: 'vr3.journal.evidenceOverrideCleared',
+        labelValues: { item: itemId },
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      }, null)
+    },
+
+    /**
      * Committing the project baseline is the transition Option creation
      * consumes. It is one journalled event, so the permission it grants
      * cannot change without an event (M-4), and it records the snapshot
@@ -7548,7 +7927,38 @@ const store = createStore<Store>((set, get) => {
       // уже был застрахован от этого тем же монотонным счётчиком. Имя теперь
       // вычисляется ЗДЕСЬ, в момент самого атомарного перехода, от того же
       // `seq` — тем же счётчиком, тем же надгробным правилом, что и `id`.
-      const resolvedName = name ?? `Option ${seq}`
+      /**
+       * ИМЯ НОВОЙ OPTION.
+       *
+       * `v1`/`v2`: имя от монотонного `seq` — как было, счётчик-надгробие.
+       *
+       * `v3`/`v4`: первая Option — база, и она читается под своим именем;
+       * нумеруются только ОТХОДЫ от неё, начиная с единицы. Номер берётся
+       * наименьший свободный, а не следующий за счётчиком: пользователь
+       * удалил «Option 1» — значит, единица свободна, и следующая Option
+       * должна быть единицей, иначе список нумеруется дырами, которых в
+       * нём уже нет.
+       *
+       * Дублей это не создаёт: имя вычисляется ЗДЕСЬ, внутри самого
+       * перехода, от состояния, которое уже включает все предыдущие
+       * создания — ровно по той же причине, по которой здесь же живёт
+       * `seq` (AUD-03/EXP-04).
+       */
+      const resolvedName = name ?? (s.navVariant === 'v4'
+        ? (s.options.length === 0
+          ? BASE_OPTION_AUTO_NAME
+          : (() => {
+            /* Имя базовой Option, которое человек не выбирал, номером не
+               считается: она читается под собственной подписью, и отход от
+               неё начинается с единицы. */
+            const taken = new Set(s.options
+              .filter((o, index) => !(index === 0 && isAutoBaseName(o.name)))
+              .map((o) => o.name))
+            let n = 1
+            while (taken.has(`Option ${n}`)) n += 1
+            return `Option ${n}`
+          })())
+        : `Option ${seq}`)
       const fresh = defaultOptionConfig()
       // VR3-02: the Option INHERITS the project baseline that the stage
       // before it journalled. Not a live read of the fixture — a variant is
@@ -7560,6 +7970,68 @@ const store = createStore<Store>((set, get) => {
         fresh.scopeBuildings = inheritedScope
         fresh.scopeSelected = initialScopeSelection(inheritedScope)
         fresh.scopeActiveBuildingId = inheritedScope[0]!.id
+        /**
+         * ONE BUILDING, NOTHING TO CHOOSE: the base is confirmed and saved
+         * with the Option itself.
+         *
+         * The step it replaces asks two questions — WHICH buildings are in
+         * scope, and are their Kennwerte right. With a single inherited
+         * building the first has one answer, and the second is answered by
+         * the project baseline this Option just inherited (M-1: a baseline
+         * the Projektverständnis stage already journalled).
+         *
+         * It happens HERE, inside the creation, so there is no moment in
+         * which the Option exists with an unconfirmed base — no second event
+         * mutating a just-created object, and undoing the creation undoes
+         * this with it. The attribution is `AUTO_SCOPE_ACTOR`, never a
+         * person, and the fingerprint is computed from the same functions
+         * the manual path uses, so a later edit still turns the scope
+         * `stale` by arithmetic exactly as before.
+         */
+        if (inheritedScope.length === 1) {
+          const only = inheritedScope[0]!
+          const at = new Date().toISOString()
+          const scopeState = {
+            scopeEdits: fresh.scopeEdits,
+            scopeBuildings: fresh.scopeBuildings,
+            scopeSelected: fresh.scopeSelected,
+          }
+          fresh.scopeConfirmations = {
+            [only.id]: {
+              fingerprint: buildingScopeFingerprint(scopeState, only),
+              actor: AUTO_SCOPE_ACTOR,
+              at,
+            },
+          }
+          fresh.scopeSaved = {
+            fingerprint: scopeFingerprint(scopeState),
+            selectedIds: scopeSelectedIds(scopeState),
+            bgfRSTotal: selectedBgfRSTotal(scopeState),
+            actor: AUTO_SCOPE_ACTOR,
+            at,
+          }
+          // One selected building is configured as ONE thing — the same
+          // consequence `advanceBuildingScopeSave` derives from the same
+          // fact, not a second opinion about it.
+          fresh.configurationMode = 'SHARED'
+          /**
+           * AND THE MODE IS ALREADY CHOSEN, so no gate asks about it.
+           *
+           * The Konfigurator gate exists to confirm HOW an Option is
+           * configured — shared across buildings, or one configuration per
+           * building. With a single building that question has one possible
+           * answer, so the gate was a full screen standing between the
+           * seller and the only next step it could name.
+           *
+           * `pricingStarted` is deliberately NOT set here: pricing still
+           * begins where it always did, on ENTERING Leistungsabgrenzung
+           * (`openConfiguratorStepAt`), which now happens one screen
+           * earlier. The persisted invariant is one-directional — a started
+           * price requires a chosen mode, not the reverse — so this stays
+           * inside it.
+           */
+          fresh.configurationModeChosen = true
+        }
       }
       // VR3-03: the Option starts with SIX UNDECIDED scope decisions and its
       // project's own service catalogue. Nothing is pre-included and nothing
@@ -7623,13 +8095,25 @@ const store = createStore<Store>((set, get) => {
         }
         fresh.fields = legacyFieldsFromReview(inheritedReview, s.buildingConflicts)
       }
+      const keepActive = s.navVariant === 'v4' && Boolean(s.activeOptionId)
       set({
         // `NO_TRANSIENT` carries `optionCommit: null`, so a successful
         // creation clears the commitment through the same one convention
         // that clears the preview and the undo toast.
         ...NO_TRANSIENT,
         options: [...s.options, { id, name: resolvedName }],
-        activeOptionId: id,
+        /**
+         * КТО ОСТАЁТСЯ ВЫБРАННЫМ.
+         *
+         * `v1`/`v2`: новая Option становится активной — как было.
+         *
+         * `v3`/`v4`: создание варианта — это не переключение на него.
+         * Активной остаётся та, в которой человек работал (обычно база):
+         * он нажал «создать ещё одну», а не «уйти отсюда». Первая Option
+         * проекта активной становится всё равно — до неё активной не было
+         * никого.
+         */
+        ...(keepActive ? {} : { activeOptionId: id }),
         optionSeq: seq,
         pipelineView: 'buildingScope',
         // The Option's HOME is the collection. Creating one navigates there
@@ -7638,12 +8122,18 @@ const store = createStore<Store>((set, get) => {
         // T-03, which is normative for this exact state).
         projectStage: 'options',
         // Новая Option — независимый вариант со свежей конфигурацией.
-        // Рабочая копия предыдущей активной Option убирается в хранилище,
-        // свежая раскладывается в плоские поля.
-        ...(s.activeOptionId
-          ? { optionConfigs: { ...s.optionConfigs, [s.activeOptionId]: captureConfig(s) } }
-          : {}),
-        ...fresh,
+        // Инвариант `optionConfigs`: у АКТИВНОЙ Option ключа в хранилище
+        // нет, её рабочая копия лежит в плоских полях. Поэтому свежая
+        // конфигурация уходит либо в поля (новая стала активной), либо в
+        // хранилище (активной осталась прежняя).
+        ...(keepActive
+          ? { optionConfigs: { ...s.optionConfigs, [id]: fresh } }
+          : {
+            ...(s.activeOptionId
+              ? { optionConfigs: { ...s.optionConfigs, [s.activeOptionId]: captureConfig(s) } }
+              : {}),
+            ...fresh,
+          }),
         configurationModeEditing: false,
       })
       // Что вернуть при ПОВТОРЕ отмены. Прежде `forward` восстанавливал
@@ -7743,6 +8233,96 @@ const store = createStore<Store>((set, get) => {
     },
 
     /**
+     * WHY a deletion can be refused, in the caller's own vocabulary.
+     *
+     * The UI asks this before it draws the control, so a blocked action can
+     * SAY why (rule 12) instead of being a dead button — and the reducer
+     * asks the same function, so the reason and the refusal can never drift
+     * apart.
+     */
+    optionDeleteBlock: (id) => {
+      const s = get()
+      const index = s.options.findIndex((o) => o.id === id)
+      if (index < 0) return null
+      if (index === 0) return 'base'
+      if (s.snapshots.some((sn) => sn.optionId === id)) return 'sent'
+      return null
+    },
+
+    /**
+     * Удаление Option — событие журнала, как и всё остальное (M-4).
+     *
+     * Две границы, и обе принципиальные. Базовая Option (первая в списке) —
+     * то, от чего отходят остальные: её удаление осиротило бы сравнение и
+     * сам порядок коллекции. Отправленная Option — снапшот (M-3), и снапшот
+     * не исчезает потому, что кто-то передумал.
+     *
+     * Отмена (DC-29) возвращает состояние, которое удаление застало: список,
+     * конфигурации, активную Option и её рабочую копию. Поэтому здесь
+     * снимаются все четыре, а не одна лишь строка списка — «вернуть
+     * карточку без конфигурации» уже было найдено ревью 26 на создании.
+     */
+    deleteOption: (id) => {
+      const s = get()
+      if (get().optionDeleteBlock(id) !== null) return
+      const index = s.options.findIndex((o) => o.id === id)
+      if (index < 0) return
+      const name = s.options[index]!.name
+      const wasActive = s.activeOptionId === id
+      // Уходящая Option активна → активной становится базовая, и её рабочая
+      // копия переезжает в плоские поля: инвариант `optionConfigs` — у
+      // активной Option ключа в хранилище нет.
+      const fallbackId = s.options[0]!.id
+      const fallback = wasActive ? s.optionConfigs[fallbackId] ?? null : null
+      if (wasActive && !fallback) {
+        throw new Error(
+          `Option ${fallbackId} есть в списке, но её конфигурация отсутствует — `
+          + 'состояние повреждено; переключиться некуда',
+        )
+      }
+      const prevOptions = s.options
+      const prevConfigs = s.optionConfigs
+      const prevActive = s.activeOptionId
+      const prevLevel = s.level
+      const prevPipelineView = s.pipelineView
+      const prevFlat = captureConfig(s)
+      const remove = () => set((x) => {
+        const { [id]: _gone, ...rest } = x.optionConfigs
+        if (!wasActive) {
+          return { ...NO_TRANSIENT, options: x.options.filter((o) => o.id !== id), optionConfigs: rest }
+        }
+        const { [fallbackId]: _opened, ...stored } = rest
+        return {
+          ...NO_TRANSIENT,
+          options: x.options.filter((o) => o.id !== id),
+          optionConfigs: stored,
+          activeOptionId: fallbackId,
+          ...fallback!,
+          configurationModeEditing: false,
+        }
+      })
+      remove()
+      apply({
+        kind: 'value.edited',
+        label: `Option «${name}» gelöscht`,
+        labelKey: 'vr3.journal.optionDeleted',
+        labelValues: { option: name },
+        deltaExact: null,
+        inverse: () => set({
+          ...NO_TRANSIENT,
+          options: prevOptions,
+          optionConfigs: prevConfigs,
+          activeOptionId: prevActive,
+          level: prevLevel,
+          pipelineView: prevPipelineView,
+          ...prevFlat,
+          configurationModeEditing: false,
+        }),
+        forward: () => remove(),
+      })
+    },
+
+    /**
      * Enter the Option workspace at the first stage that is not complete.
      *
      * DETERMINISTIC AND TOTAL (accepted 2026-09-06 IA audit, §8). The
@@ -7769,6 +8349,9 @@ const store = createStore<Store>((set, get) => {
           level: 'option',
           pipelineView,
           openConfiguratorStep,
+          // The same door rule as `openConfiguratorStepAt` — see the note
+          // on `pricingStartedAfterStep`.
+          pricingStarted: pricingStartedAfterStep(s, openConfiguratorStep),
           configurationModeEditing: false,
           ...(canBeginConfiguration(s) && s.configurationModeChosen
             && !s.configurationModeEditing
@@ -7817,6 +8400,19 @@ const store = createStore<Store>((set, get) => {
           coverage: next.coverage,
           mode: s.mode,
         }, next.openConfiguratorStep),
+        /**
+         * Read from the OPTION BEING OPENED, never from the one being left:
+         * `pricingStarted`, `configurationModeChosen` and the step all
+         * belong to `next`, and mixing in the outgoing Option's answer is
+         * how one Option's price would appear behind another's screen.
+         */
+        pricingStarted: pricingStartedAfterStep(
+          { ...next, configurationModeEditing: false },
+          nav?.step ?? nearestActiveConfiguratorStep({
+            coverage: next.coverage,
+            mode: s.mode,
+          }, next.openConfiguratorStep),
+        ),
         configurationModeEditing: false,
       })
     },
@@ -8505,6 +9101,44 @@ const store = createStore<Store>((set, get) => {
       })
     },
 
+    setInterfaceMatrixMark: (nr, column, mark) => {
+      const s = get()
+      const row = MATRIX_INDEX.get(nr)
+      if (!row) return
+      const current = s.interfaceMatrix[nr]?.[column] ?? row[column]
+      if (current === mark) return
+      const previous = s.interfaceMatrix
+      /**
+       * A departure is stored only while it IS one. Setting a box back to
+       * the sheet's own value removes the entry instead of writing a copy
+       * of the source — otherwise «changed by hand» and «as delivered»
+       * become indistinguishable the moment somebody undoes their own edit.
+       */
+      const write = (value: MatrixMarks) => set({ interfaceMatrix: value })
+      const rest: Record<string, Partial<Record<MatrixColumn, MatrixMark>>> = {}
+      for (const [key, value] of Object.entries(previous)) {
+        if (key !== nr) rest[key] = value
+      }
+      const departures: Partial<Record<MatrixColumn, MatrixMark>> = {}
+      for (const [key, value] of Object.entries(previous[nr] ?? {})) {
+        if (key !== column) departures[key as MatrixColumn] = value as MatrixMark
+      }
+      if (mark !== row[column]) departures[column] = mark
+      const next: MatrixMarks = Object.keys(departures).length > 0
+        ? { ...rest, [nr]: departures }
+        : rest
+      write(next)
+      apply({
+        kind: 'value.edited',
+        label: `Schnittstellenmatrix ${nr}`,
+        labelKey: 'vr3.journal.interfaceMark',
+        labelValues: { nr },
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      })
+    },
+
     /* ─────────── VR3-04 · the schedule stage's own actions ─────────── */
 
     setScheduleStart: (iso) => {
@@ -8680,9 +9314,97 @@ const store = createStore<Store>((set, get) => {
       })
     },
 
+    /**
+     * DER GANZE BOGEN, ein Klick — und trotzdem EIN Ereignis.
+     *
+     * Zehn einzelne Aufrufe hätten zehn Journaleinträge und zehn
+     * Rückgängig-Schritte für eine einzige Handlung des Nutzers erzeugt;
+     * das Journal soll erzählen, was jemand getan hat, nicht wie oft es
+     * intern geschrieben wurde. Ein Abschnitt mit einem BLOCKER bleibt
+     * ungeprüft — dieselbe Regel wie beim einzelnen Vermerk, und der Grund
+     * dafür ist derselbe: „vollständig" und „geprüft" dürfen nicht
+     * dasselbe bedeuten. Deshalb kann dieser Knopf den Bogen auch nicht
+     * stillschweigend freigeben, wenn noch etwas im Weg steht.
+     */
+    acknowledgeAllReviewSections: () => {
+      const s = get()
+      if (!finalValidationAvailableFor(s)) return
+      const at = new Date().toISOString()
+      const previous = s.reviewAcknowledged
+      let added = 0
+      /*
+       * BIS ES STEHT — und jede Runde gegen den ECHTEN Zustand.
+       *
+       * Ein Abschnitt kann seinen Fingerabdruck aus Größen bilden, die sich
+       * durch das Vermerken selbst noch einmal bewegen; das kommerzielle
+       * Ergebnis tut genau das. Ein einziger Durchlauf ließ deshalb einen
+       * Abschnitt offen, und der Nutzer musste ein zweites Mal auf einen
+       * Knopf drücken, der „alle" verspricht.
+       *
+       * Die Ableitung läuft dabei über `get()` und nicht über eine
+       * zusammengesetzte Kopie des Zustands: ein Fingerabdruck, der aus
+       * einem nur gedachten Zustand stammt, ist nicht der, gegen den die
+       * Prüfung später verglichen wird — der erste Versuch schrieb genau so
+       * einen und ließ den Abschnitt dauerhaft ungeprüft aussehen. Also
+       * wird wirklich geschrieben, neu abgeleitet und weitergemacht,
+       * begrenzt durch die Anzahl der Abschnitte. Nach außen bleibt es EIN
+       * Ereignis: das Journal erzählt die Handlung, nicht die Runden.
+       */
+      for (let pass = 0; pass < REVIEW_SECTIONS.length; pass += 1) {
+        const current = get()
+        const next = { ...current.reviewAcknowledged }
+        let addedThisPass = 0
+        for (const input of reviewSectionInputsFor(current)) {
+          if (input.issues.some((issue) => issue.severity === 'blocker')) continue
+          const held = next[input.id]
+          if (held && held.fingerprint === input.fingerprint) continue
+          next[input.id] = { fingerprint: input.fingerprint, actor: SCOPE_ACTOR, at }
+          addedThisPass += 1
+        }
+        if (addedThisPass === 0) break
+        set({ reviewAcknowledged: next })
+        added += addedThisPass
+      }
+      if (added === 0) return
+      const next = get().reviewAcknowledged
+      const write = (
+        value: Partial<Record<ReviewSectionId, ReviewAcknowledgement>>,
+      ) => set({ reviewAcknowledged: value })
+      apply({
+        kind: 'value.confirmed',
+        label: `Prüfbogen geprüft · ${added} Abschnitte`,
+        labelKey: 'vr3.journal.reviewAllAcknowledged',
+        labelValues: { count: added },
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      })
+    },
+
     setReviewFocusSection: (sectionId) => {
       if (get().reviewFocusSectionId === sectionId) return
       set({ reviewFocusSectionId: sectionId })
+    },
+
+    setKgFocusService: (serviceId) => {
+      if (get().kgFocusServiceId === serviceId) return
+      set({ kgFocusServiceId: serviceId })
+    },
+
+    /**
+     * The intent is set BEFORE the route and cleared again when the route
+     * did not happen: `openKgChapter` legitimately refuses a chapter whose
+     * scope is not `included` or whose scope decisions are incomplete, and a
+     * focus intent left standing after a refused route would fire on the
+     * next chapter the reader opens by themselves.
+     */
+    openKgServiceDecision: (sectionId, group, serviceId) => {
+      set({ reviewFocusSectionId: sectionId, kgFocusServiceId: serviceId })
+      get().setPipelineView('konfigurator')
+      get().openKgChapter(group)
+      if (get().openConfiguratorStep !== KG_CHAPTER_STEP[group]) {
+        set({ kgFocusServiceId: null })
+      }
     },
 
     /**
@@ -9558,6 +10280,70 @@ const store = createStore<Store>((set, get) => {
     setUiLanguage: (l) => set({ uiLanguage: l }),
 
     setDensity: (d) => set({ density: d }),
+
+    setNavVariant: (v) => {
+      set({ navVariant: v })
+      const storage = browserProposalStorage()
+      if (storage) writeNavVariant(storage, v)
+    },
+
+    /* ── VR3 · `v3`: das übernommene Terminmodell ───────────────────────── */
+
+    /**
+     * Ein Gebäudeparameter des Terminmodells.
+     *
+     * Wie jede andere Wertänderung geht sie durch das Journal (M-4) und ist
+     * rückgängig zu machen: der Terminplan ist eine kaufmännische Aussage,
+     * und eine Aussage ohne Ereignis gibt es in diesem Prototyp nicht.
+     */
+    setBauzeitBuildingParam: (buildingId, patch) => {
+      const s = get()
+      const previous = s.bauzeitBuildingParams[buildingId] ?? {}
+      const next = { ...previous, ...patch }
+      const write = (value: BauzeitBuildingParamEdit) => set({
+        bauzeitBuildingParams: { ...get().bauzeitBuildingParams, [buildingId]: value },
+      })
+      write(next)
+      apply({
+        kind: 'value.edited',
+        label: 'Terminmodell: Gebäudeparameter geändert',
+        labelKey: 'vr3.journal.bauzeitBuildingParam',
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      })
+    },
+
+    setBauzeitModel: (patch) => {
+      const previous = get().bauzeitModel
+      const next = applyBauzeitModelPatch(previous, patch)
+      const write = (value: BauzeitModel) => set({ bauzeitModel: value })
+      write(next)
+      apply({
+        kind: 'value.edited',
+        label: 'Terminmodell: Kalibrierung geändert',
+        labelKey: 'vr3.journal.bauzeitModel',
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      })
+    },
+
+    resetBauzeitModel: () => {
+      const previous = get().bauzeitModel
+      const next = BAUZEIT_INITIAL_STATE.bauzeitModel
+      if (previous === next) return
+      const write = (value: BauzeitModel) => set({ bauzeitModel: value })
+      write(next)
+      apply({
+        kind: 'value.edited',
+        label: 'Terminmodell: Kalibrierung zurückgesetzt',
+        labelKey: 'vr3.journal.bauzeitModelReset',
+        deltaExact: null,
+        inverse: () => write(previous),
+        forward: () => write(next),
+      })
+    },
   }
 })
 
@@ -9580,6 +10366,9 @@ let activeProposalStorage: StorageLike | null = null
  * what made the failure unrecoverable as well as invisible.
  */
 let lastPersistedSerialization: string | null = null
+/** The analyses map already written, compared by identity — the store is
+ *  frozen and replaces the map on every change, so this is exact. */
+let lastPersistedAnalyses: Record<string, ProjectAnalysis> | null = null
 /**
  * The payload whose write already FAILED.
  *
@@ -9618,7 +10407,8 @@ function proposalProjectIdOf(state: Pick<Store, 'opportunityId'>): string {
  * project-scoped until somebody says otherwise, in writing, here.
  *
  * Kept across a project switch, and why:
- *   uiLanguage · density        the user's preferences, not the project's
+ *   uiLanguage · density · navVariant
+ *                               the user's preferences, not the project's
  *   projectAnalyses             the project REGISTER's own state, already
  *                               keyed by project id — swapping it would
  *                               discard the analysis of every other project
@@ -9634,7 +10424,7 @@ function proposalProjectIdOf(state: Pick<Store, 'opportunityId'>): string {
  * and `INITIAL_SNAPSHOT` carries the same function identities anyway.
  */
 const PROJECT_SCOPED_KEEP: ReadonlySet<string> = new Set([
-  'uiLanguage', 'density', 'projectAnalyses', 'projectReadiness',
+  'uiLanguage', 'density', 'navVariant', 'projectAnalyses', 'projectReadiness',
   'mode', 'level', 'opportunityId', 'projectStage', 'understandingTab',
 ])
 
@@ -9760,10 +10550,12 @@ function restoredProjectWorkspace(
   }
   try {
     const payload = loaded.payload
-    const active = restoredOptionConfig(payload.active, payload.buildingConflicts)
+    const active = restoredOptionConfig(
+      payload.active, payload.buildingConflicts, projectId,
+    )
     const optionConfigs = Object.fromEntries(
       Object.entries(payload.optionConfigs).map(([id, config]) => [
-        id, restoredOptionConfig(config, payload.buildingConflicts),
+        id, restoredOptionConfig(config, payload.buildingConflicts, projectId),
       ]),
     )
     return {
@@ -9774,6 +10566,12 @@ function restoredProjectWorkspace(
       optionSeq: payload.optionSeq,
       optionConfigs,
       buildingConflicts: payload.buildingConflicts,
+      // A baseline of ANOTHER project is not this project's baseline: the
+      // payload is filed per project, but the check costs nothing and the
+      // failure it prevents is an Option inheriting a foreign origin.
+      projectBaseline: payload.projectBaseline?.projectId === projectId
+        ? payload.projectBaseline
+        : null,
       projectParamsConfirmed: payload.projectParamsConfirmed === true,
       snapshots: Object.freeze(
         (payload.snapshots ?? []).map((snap) => deepFreeze({ ...snap })),
@@ -9853,6 +10651,41 @@ export function hydrateProposalState(
   }
 }
 
+/**
+ * Restore the register's analyses, or leave the register empty.
+ *
+ * VALIDATED, never trusted: a stored analysis has to name its project and
+ * carry a job state this build knows, and one bad entry discards only
+ * itself. The rest of the shape is tolerated — a field added later is
+ * missing here, and the reader already treats every optional record as
+ * possibly absent.
+ */
+function hydrateAnalyses(storage: StorageLike): void {
+  const stored = readProjectAnalyses(storage)
+  if (!stored || typeof stored !== 'object') return
+  const known = new Set(['NOT_STARTED', 'RUNNING', 'PARTIAL_FAILURE', 'COMPLETE'])
+  const restored: Record<string, ProjectAnalysis> = {}
+  for (const [id, value] of Object.entries(stored as Record<string, unknown>)) {
+    if (!value || typeof value !== 'object') continue
+    const candidate = value as Partial<ProjectAnalysis>
+    if (candidate.projectId !== id) continue
+    if (typeof candidate.jobState !== 'string' || !known.has(candidate.jobState)) continue
+    const project = demoProject(id)
+    if (!project) continue
+    restored[id] = {
+      ...initialProjectAnalysis(project),
+      ...(candidate as ProjectAnalysis),
+    }
+  }
+  if (Object.keys(restored).length > 0) {
+    // Merged over the register's own initial map, so a project that has no
+    // stored analysis keeps its fresh one instead of disappearing.
+    store.setState((current) => ({
+      projectAnalyses: { ...current.projectAnalyses, ...restored },
+    }))
+  }
+}
+
 /** Explicit startup hook; importing the store never touches localStorage. */
 export function initializeProposalPersistence(
   storage = browserProposalStorage(),
@@ -9869,11 +10702,20 @@ export function initializeProposalPersistence(
    * served to whichever project is opened first.
    */
   prunePersistedProposals(storage)
+  hydrateAnalyses(storage)
   hydrateProposalState(storage)
   lastPersistedSerialization = serializeProposalPayload(
     proposalProjectIdOf(store.getState()), capturePersistedProposal(store.getState()),
   )
+  lastPersistedAnalyses = store.getState().projectAnalyses
   stopProposalPersistence = store.subscribe((state) => {
+    // The register's analyses are their own payload under their own key:
+    // they outlive any single project's workspace, and writing them with a
+    // proposal would tie one project's reading to another's configuration.
+    if (state.projectAnalyses !== lastPersistedAnalyses) {
+      lastPersistedAnalyses = state.projectAnalyses
+      writeProjectAnalyses(storage, state.projectAnalyses)
+    }
     const projectId = proposalProjectIdOf(state)
     const payload = capturePersistedProposal(state)
     const serialized = serializeProposalPayload(projectId, payload)
@@ -9965,6 +10807,45 @@ if (typeof window !== 'undefined'
       ...store.getState().commercialTrust,
     }),
   }
+}
+
+/**
+ * RESTART THE DEMONSTRATION — the product's own reset.
+ *
+ * It does NOT replace the running state: a whole-state swap bypasses the
+ * journal, which is exactly why `__resetStoreForTests` refuses to run
+ * outside tests (M-4). This clears what the browser REMEMBERS and lets the
+ * app boot again from its own initial snapshot, so every field is fresh by
+ * construction and no event is forged.
+ *
+ * The reader's preferences survive on purpose — the UI language and the
+ * navigation variant belong to the person, not to the demonstration, and
+ * wiping them would be a second, unasked-for reset.
+ *
+ * Returns after the reload has been requested; the caller does not continue
+ * in a meaningful sense.
+ */
+export function resetDemonstration(): void {
+  const storage = browserProposalStorage()
+  if (storage) {
+    clearAllPersistedProposals(storage)
+    clearPersistedProposal(storage, PROPOSAL_PROJECT_ID)
+    clearLastProjectId(storage)
+    try {
+      storage.removeItem(ANALYSES_KEY)
+    } catch {
+      // A storage that refuses to forget is still a storage that boots: the
+      // reload below starts from whatever survives, and saying so is the
+      // honest outcome of a demonstration reset.
+    }
+  }
+  /**
+   * Back to the ROOT, not to the current URL. A reload would restore the
+   * route from the address bar and land the reader inside a project whose
+   * work was just discarded — a cleared workspace wearing the old address.
+   * The register is where a demonstration starts.
+   */
+  if (typeof window !== 'undefined') window.location.assign('/')
 }
 
 /**

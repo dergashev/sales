@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from 'react'
 import {
+  KG_DECIDED_SCOPE_GROUPS,
   KG_SCOPE_GROUPS,
   chapterOf,
   dependencyBlocker,
@@ -80,7 +81,18 @@ export function KgChapter() {
     || chapter.rahmen !== undefined
   const currentGroupId = activeGroupId ?? serviceGroups[0]?.id ?? null
 
-  const includedGroups = KG_SCOPE_GROUPS.filter((g) => decisions.scope[g] === 'included')
+  /**
+   * The page-to-page order follows the RAIL, not the whole DIN 276 list.
+   *
+   * KG 200, KG 500 and KG 600 are included by baseline and have no step of
+   * their own since 13.09, so «Weiter zu KG 500» promised a page nothing
+   * else offers and sent the reader out of the sequence they were walking.
+   * The neighbours are the asked groups that are actually in scope.
+   */
+  const includedGroups: KgScopeGroup[] = KG_DECIDED_SCOPE_GROUPS
+    .filter((g) => decisions.scope[g] === 'included')
+  // A baseline chapter reached directly (by URL) is not IN this sequence, so
+  // it has no neighbours — `indexOf` returning -1 is that answer, not a bug.
   const position = includedGroups.indexOf(group)
   const previous = position > 0 ? includedGroups[position - 1] : null
   const next = position >= 0 && position < includedGroups.length - 1

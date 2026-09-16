@@ -209,7 +209,7 @@ describe('Уровень Projekte', () => {
     expect(demoProject('PORTFOLIO-HH-01')).toBeNull()
   })
 
-  it('панель фильтров закрыта по умолчанию и содержит страну, город, ответственного и статусы', async () => {
+  it('панель фильтров закрыта по умолчанию и содержит город, клиента, ответственного и статусы', async () => {
     const user = userEvent.setup()
     render(<App />)
     const toggle = screen.getByRole('button', { name: /^Filter/ })
@@ -219,11 +219,15 @@ describe('Уровень Projekte', () => {
     // клика при каждом заходе.
     expect(screen.getByRole('searchbox')).toBeInTheDocument()
     expect(screen.getByLabelText('Sortierung')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Land')).toBeNull()
+    expect(screen.queryByLabelText('Stadt')).toBeNull()
 
     await openFilters(user)
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
-    for (const label of ['Land', 'Stadt', 'Verantwortlich']) {
+    // Фасета страны не существует: реестр немецкий с точностью до
+    // округления, и фильтр не сужал ничего. Страна осталась в титуле
+    // карточки и в свободном поиске.
+    expect(screen.queryByLabelText('Land')).toBeNull()
+    for (const label of ['Stadt', 'Kunde', 'Verantwortlich']) {
       const control = screen.getByLabelText(label)
       expect(control).toHaveAttribute('role', 'combobox')
       expect(control).toHaveAttribute('aria-expanded', 'false')
@@ -295,8 +299,8 @@ describe('Уровень Projekte', () => {
     expect(cardOrder())
       .toEqual([TITLES.lindenhain, TITLES.guterbogen, TITLES.hamburg, TITLES.wien])
 
-    // И между группами: тот же выбор плюс страна AT оставляет один.
-    await user.type(screen.getByLabelText('Land'), 'AT')
+    // И между группами: тот же выбор плюс город Wien оставляет один.
+    await user.type(screen.getByLabelText('Stadt'), 'Wien')
     await user.keyboard('{Enter}')
     expect(cardOrder()).toEqual([TITLES.wien])
 
@@ -306,22 +310,20 @@ describe('Уровень Projekte', () => {
     expect(cardOrder()).toEqual([TITLES.wien])
   })
 
-  it('смена страны безопасно очищает несовместимый город и объявляет это один раз', async () => {
+  it('фильтр по клиенту сужает реестр и снимается своим чипом', async () => {
     const user = userEvent.setup()
     render(<App />)
     await openFilters(user)
-    const city = screen.getByLabelText('Stadt') as HTMLInputElement
-    await user.type(city, 'Wien')
+    // Компания клиента — собственная фасета, а не только строка поиска:
+    // сейлз помнит фирму и человека раньше адреса, а свободный поиск
+    // находит компанию лишь тому, кто уже знает её точное написание.
+    const client = screen.getByLabelText('Kunde') as HTMLInputElement
+    await user.type(client, 'Donauquartier Entwicklung GmbH')
     await user.keyboard('{Enter}')
-    expect(city.value).toBe('Wien')
     expect(cardOrder()).toEqual([TITLES.wien])
 
-    await user.type(screen.getByLabelText('Land'), 'DE')
-    await user.keyboard('{Enter}')
-    // Значение контрола и отфильтрованное множество не расходятся.
-    expect((screen.getByLabelText('Stadt') as HTMLInputElement).value).toBe('Alle')
-    expect(cardOrder()).toHaveLength(4)
-    expect(screen.getByText('Stadt zurückgesetzt: Wien liegt nicht in DE.'))
+    const chips = screen.getByRole('group', { name: 'Aktive Filter' })
+    expect(within(chips).getByText('Kunde: Donauquartier Entwicklung GmbH'))
       .toBeInTheDocument()
   })
 
@@ -683,7 +685,7 @@ describe('AUD-03 — Option identity & creation continuity', () => {
     // einen Verlauf (Spine) wieder erreichbar, und der zweite,
     // eigenständige Klick legt eine zweite, eindeutig benannte Option an.
     const journey = screen.getByRole('navigation', { name: 'Projektablauf' })
-    await user.click(within(journey).getByText('Projektverständnis').closest('button')!)
+    await user.click(within(journey).getByText('Projekt-Checkliste').closest('button')!)
     await user.click(create())
     settleOptionCommit()
     expect(useStore.getState().options.map((o) => o.name)).toEqual(['Option 1', 'Option 2'])

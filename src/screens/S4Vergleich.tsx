@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { hasV3Surfaces } from "../lib/variantLock";
 import {
   resolvedViewedOptionId,
   useStore,
@@ -18,6 +19,7 @@ import {
   type ComparisonRow,
 } from "../state/optionComparison";
 import { demoProject } from "../state/projectAnalysis";
+import { BASE_OPTION_AUTO_NAME } from "../state/optionLifecycle";
 import { NNBSP, present, label as moneyLabel } from "../engine/money";
 import { Button } from "../components/primitives";
 import {
@@ -129,6 +131,13 @@ export function S4Vergleich() {
   }
 
   const base = cols[0]!;
+  const v3 = hasV3Surfaces(s.navVariant);
+  /* The base Option answers to its own label here exactly as it does in the
+     collection: one Option, one name, wherever it is read. */
+  const colName = (index: number, name: string) =>
+    v3 && index === 0 && name === BASE_OPTION_AUTO_NAME
+      ? t("vr3.option.baseName")
+      : name;
   // VR2-05: "Aktuell bearbeitet"/"in Arbeit" is whichever column carries
   // `s.activeOptionId`, never necessarily the comparison baseline (`base`,
   // i===0) — both stay independent per-column badges (VARIANT-001/R-22),
@@ -193,7 +202,10 @@ export function S4Vergleich() {
       {!client && (
         <div className="a3-comparison-head mt-4">
           <div className="a3-comparison-context">
-            {cols.length > 1 && (
+            {/* `v3` drops the reading hint: the row filter beside it NAMES
+                both of its states, so the sentence explaining which one is
+                on describes a control that already says so. */}
+            {!v3 && cols.length > 1 && (
               <p className="text-body text-text-secondary">
                 {t(showAll ? "comparison.allHint" : "comparison.differencesHint")}
                 {mayOverflow && (
@@ -205,7 +217,12 @@ export function S4Vergleich() {
               </p>
             )}
           </div>
-          <div className="a3-comparison-toolbar">
+          <div className="a3-comparison-toolbar" data-align={v3 ? "start" : undefined}>
+            {/* `v3` carries no navigation in this toolbar: the way back to
+                work is the Option itself, and the collection is one click
+                up in the breadcrumb. What is left here is the control over
+                the TABLE. */}
+            {!v3 && (
             <nav
               className="a3-comparison-toolbar-group"
               aria-label={tx("Vergleichsnavigation")}
@@ -216,22 +233,50 @@ export function S4Vergleich() {
               <Button variant="ghost" onClick={() => reopenActiveOption()}>
                 {t("nav.konfigurator")}
               </Button>
-              <Button
-                onClick={() => reopenActiveOption("export")}
-                disabled={!s.canBeginConfiguration() || !s.configurationComplete()}
-                disabledReason={t("configurator.finalGate.exportBlockedReason")}
-              >
-                {t("nav.export")}
-              </Button>
+              {/* `v3` does not carry Export here: on this surface it is
+                  locked far more often than it is usable, and a control
+                  that spends its life explaining why it cannot act is not
+                  a control. Export lives where the Option is finished. */}
+              {!v3 && (
+                <Button
+                  onClick={() => reopenActiveOption("export")}
+                  disabled={!s.canBeginConfiguration() || !s.configurationComplete()}
+                  disabledReason={t("configurator.finalGate.exportBlockedReason")}
+                >
+                  {t("nav.export")}
+                </Button>
+              )}
             </nav>
+            )}
             {/* The row-filter toggle only means something once a table
                 exists (F20/AC-08): with fewer than two options it would be
                 a live control over nothing. */}
             {cols.length > 1 && (
               <div className="a3-comparison-toolbar-group">
-                <Button variant="ghost" onClick={() => setShowAll((v) => !v)} aria-pressed={showAll}>
-                  {tx(showAll ? "nur Unterschiede" : "alle Zeilen anzeigen")}
-                </Button>
+                {/* The filter has two named states, and a switch SHOWS both
+                    of them: the button said only what it would do next, so
+                    which of the two the table was in had to be inferred
+                    from the table. */}
+                {v3 ? (
+                  <SegmentedControl
+                    /* The two segments name themselves, so the legend is
+                       for the screen reader only — the group still has a
+                       name, it simply does not need a word on screen. */
+                    legend={t("comparison.rows.legend")}
+                    legendHidden
+                    value={showAll ? "all" : "diff"}
+                    onChange={(value) => setShowAll(value === "all")}
+                    options={[
+                      { value: "diff", label: t("s4.showDifferences") },
+                      { value: "all", label: t("comparison.rows.all") },
+                    ]}
+                    size="compact"
+                  />
+                ) : (
+                  <Button variant="ghost" onClick={() => setShowAll((v) => !v)} aria-pressed={showAll}>
+                    {tx(showAll ? "nur Unterschiede" : "alle Zeilen anzeigen")}
+                  </Button>
+                )}
               </div>
             )}
             {/* ACCEPTANCE REMEDIATION (cycle 2, ACCEPT-02): rendered only
@@ -478,9 +523,18 @@ export function S4Vergleich() {
                       // sticky first column, not a width/sizing fix.
                       <th
                         key={c.option.id}
-                        className={`a3-num${c.option.id === s.activeOptionId ? " a3-target" : ""}`}
+                        /* `v3` marks the BASE column — the one every delta
+                           is measured against — instead of the one that
+                           happens to be open: the emphasis belongs to the
+                           column the table is about. `in Arbeit` stays its
+                           own badge, so the two facts never merge. */
+                        className={`a3-num${
+                          (v3 ? i === 0 : c.option.id === s.activeOptionId)
+                            ? " a3-target"
+                            : ""
+                        }`}
                       >
-                        {c.option.name}
+                        {colName(i, c.option.name)}
                         <span className="mt-1 flex flex-wrap justify-end gap-1 text-small font-regular text-text-secondary">
                           {!client && <span>{c.option.id}</span>}
                           {i === 0 && (
@@ -541,7 +595,7 @@ export function S4Vergleich() {
                                   base.p.result.total.exact,
                                 ),
                               ),
-                              baseline: base.option.name,
+                              baseline: colName(0, base.option.name),
                             })}
                           </span>
                         )}
@@ -578,7 +632,7 @@ export function S4Vergleich() {
                     change manifest). The Option already open/in Arbeit gets
                     its real next step instead of a duplicate action:
                     continue in the Konfigurator. */}
-                {!client && (
+                {!client && !v3 && (
                   <tr>
                     <th scope="row" className="text-text-secondary">
                       {t("s2.variants.action")}
@@ -627,7 +681,7 @@ export function S4Vergleich() {
         </>
       )}
 
-      {cols.length > 1 && (
+      {!v3 && cols.length > 1 && (
         <div className="mt-5">
           <NextStep
             description={tx(

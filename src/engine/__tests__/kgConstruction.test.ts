@@ -100,7 +100,7 @@ function group(
 
 /* ── the synthetic construction chapter ────────────────────────────────── */
 
-/** Five façade compositions; the timber colour family exists under two. */
+/** Five facade compositions; the timber colour family exists under two. */
 const FACADE = choice('facade', 'PUTZ', [
   variant('PUTZ', '0.00'),
   variant('HOLZ', '40000.00'),
@@ -299,7 +299,7 @@ describe('a dependency on ANY of several upstream variants (requiresVariantIn)',
   })
 
   it('reads the BASELINE variant when the upstream is selected without naming one', () => {
-    // `PUTZ` is the façade baseline and is not a timber composition: the
+    // `PUTZ` is the facade baseline and is not a timber composition: the
     // colour family lapses.
     const bare = withDecisions(included(), { facade: { state: 'selected' } })
     expect(dependencySuspension(CAT, bare, svc('timber-colour'))).toBe(svc('facade'))

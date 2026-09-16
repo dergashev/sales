@@ -123,13 +123,19 @@ describe('the register is the working object', () => {
       await user.click(within(pages).getByRole('button', { name: 'Seite 2' }))
 
       // Page 2 is the last page and holds the remaining three rows; every
-      // one of them carries the action.
-      const inspects = document.querySelectorAll('.a3-drow-action-inspect')
+      // one of them opens, and the control IS the document — the file name,
+      // not a second button repeating it.
+      const inspects = document.querySelectorAll('.a3-drow-file-link')
       expect(inspects).toHaveLength(3)
       await user.click(inspects[0] as HTMLElement)
       expect(inspects[0]).toHaveAttribute('aria-expanded', 'true')
-      const detail = document.querySelector('.a3-drow-detail') as HTMLElement
-      expect(detail.hidden).toBe(false)
+      // The document opens BESIDE the register, in the region the row's own
+      // control names — not in a strip under the row, which is what the
+      // register would have had to reflow around.
+      expect(inspects[0])
+        .toHaveAttribute('aria-controls', 'documents-preview-panel')
+      const panel = document.getElementById('documents-preview-panel')
+      expect(panel).not.toBeNull()
       // The register context is exactly where it was.
       expect(within(pages).getByText('11–13 von 13 Dokumenten')).toBeInTheDocument()
     })
@@ -143,10 +149,8 @@ describe('scope is the project, never the page', () => {
     await user.click(within(pages).getByRole('button', { name: 'Seite 2' }))
 
     expect(within(rail()).getByRole('button', {
-      name: 'Alle 13 analysierbaren Dokumente analysieren',
+      name: 'Alle 13 Dokumente analysieren',
     })).toBeInTheDocument()
-    expect(within(rail()).getByText(/Filter und Seiten ändern nur die Liste/))
-      .toBeInTheDocument()
     expect(railFact('Analysierbar')).toBe('13')
     // Three rows are visible on the last page; the operation is not about
     // those three.
@@ -162,7 +166,7 @@ describe('scope is the project, never the page', () => {
     expect(railFact('Dokumente')).toBe('13')
     expect(railFact('Analysierbar')).toBe('12')
     expect(within(rail()).getByRole('button', {
-      name: 'Alle 12 analysierbaren Dokumente analysieren',
+      name: 'Alle 12 Dokumente analysieren',
     })).toBeInTheDocument()
   })
 })
@@ -187,18 +191,17 @@ describe('the rail tells the truth about the job', () => {
 
     expect(within(rail()).getByRole('heading', { name: 'Analyse abgebrochen' }))
       .toBeInTheDocument()
-    // The word is CANCELLED, and the copy states what restarting does,
-    // because `startJob` re-queues every eligible document rather than
-    // continuing where the run stopped.
-    expect(within(rail()).getByText(/ein neuer Lauf liest alle 8 analysierbaren Dokumente erneut/))
-      .toBeInTheDocument()
+    // The word is CANCELLED, and the ACTION states what restarting does:
+    // it names all eight eligible documents, because `startJob` re-queues
+    // every one of them rather than continuing where the run stopped.
+    // Nothing on the band offers to resume.
     expect(within(rail()).queryByText(/fortsetzen/i)).not.toBeInTheDocument()
     // What was produced is kept, and what was not is READY again — not
     // queued, because nothing is waiting for anything.
     expect(Number(railFact('Verarbeitet'))).toBeGreaterThan(0)
     expect(screen.queryByText('In der Warteschlange')).not.toBeInTheDocument()
     expect(within(rail()).getByRole('button', {
-      name: 'Alle 8 analysierbaren Dokumente analysieren',
+      name: 'Alle 8 Dokumente analysieren',
     })).toBeInTheDocument()
   })
 
@@ -267,10 +270,10 @@ describe('the workflow orients without publishing the model', () => {
     // Both locks name the SAME missing prerequisite, because it is the same
     // one: nothing can be understood or optioned before the analysis has run.
     expect(within(nav()).getAllByText(/gesperrt · Dokumentanalyse fehlt/)).toHaveLength(2)
-    expect(within(nav()).getByText('Projektverständnis').closest('button')).toBeNull()
+    expect(within(nav()).getByText('Projekt-Checkliste').closest('button')).toBeNull()
 
     runAnalysis()
-    const understand = within(nav()).getByText('Projektverständnis').closest('button')!
+    const understand = within(nav()).getByText('Projekt-Checkliste').closest('button')!
     await user.click(understand)
     expect(useStore.getState().projectStage).toBe('understanding')
     // Returning is the same store transition it always was.

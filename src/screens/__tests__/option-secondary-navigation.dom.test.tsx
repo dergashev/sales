@@ -64,17 +64,21 @@ describe('one secondary navigator across Configure, Calculate and Validate', () 
     })
     expect(segment(/Kostendetails/)).toBeTruthy()
 
-    // VALIDATE — the same band again. This is the third of the three stages
-    // the requirement names, and the one the released build drew as a
-    // different composition together with Configure.
+    // VALIDATE — NO band at all (Product Owner, 2026-09-16). The released
+    // build drew two segments here, `Prüfung` and `Speichern`, and both
+    // resolved to the SAME surface: a progression whose two positions were
+    // one place. Checking and saving are one act on the Prüfen stage, so the
+    // stage declares no members and the band is absent rather than
+    // single-segmented.
     completeKgConfiguration()
     act(() => {
       st().confirmSchedule()
       st().openConfiguratorStepAt('finalValidation')
     })
-    await waitFor(() => { expect(segments().length).toBe(2) })
-    expect(segment(/Prüfung/)).toBeTruthy()
-    expect(segment(/Speichern/)).toBeTruthy()
+    await waitFor(() => {
+      expect(screen.queryByRole('list', { name: /· Kapitel$|· chapters$/ })).toBeNull()
+    })
+    expect(OPTION_STAGE_STEPS.pruefen).toEqual([])
   })
 
   it('names the canonical Calculate order, with All cost details between Responsibility and Schedule', () => {

@@ -10,7 +10,7 @@ import {
   saveOptionBaseline,
 } from '../../test/offer-option'
 import { CONFIGURATOR_STEP } from '../../state/chapters'
-import { REVIEW_SECTION_COUNT } from '../../state/optionReview'
+import { REVIEW_SECTION_COUNT, REVIEW_SECTIONS } from '../../state/optionReview'
 import {
   __resetStoreForTests,
   clientModeAvailableForOption,
@@ -72,6 +72,29 @@ beforeEach(() => {
   __resetStoreForTests()
   setReducedMotion(false)
 })
+
+/**
+ * Den Bogen mit der EINEN Bestätigung schließen.
+ *
+ * Seit der Vereinfachung gibt es je Abschnitt keinen Knopf mehr: einer im
+ * Dock vermerkt den ganzen Bogen. `count` bleibt als Parameter, weil ein
+ * Test ausdrücklich den Zwischenstand „ein Abschnitt gelesen" braucht —
+ * den stellt er dann direkt über den Store her, denn über die Oberfläche
+ * ist er nicht mehr erreichbar.
+ */
+/*
+ * Der Sammelknopf im Dock ist fort (Owner, 16.09.2026), der Vermerk je
+ * Abschnitt nicht: der Bogen wird hier über den Store durchgelesen, wie es
+ * der Test daneben für den ersten Abschnitt ohnehin schon tat.
+ */
+function reviewAllSections(_user?: ReturnType<typeof userEvent.setup>) {
+  act(() => {
+    for (const definition of REVIEW_SECTIONS) {
+      st().acknowledgeReviewSection(definition.id)
+    }
+  })
+}
+
 
 describe('the Schedule is a stage: unavailable, then separately confirmable', () => {
   it('is locked while a cost group is still incomplete, and names the route out', () => {
@@ -285,7 +308,6 @@ describe('Final Validation stays long, and every issue has a route', () => {
     expect(within(index).getAllByRole('button')).toHaveLength(8)
     expect(within(index).getByText('KG 200 – 700')).toBeInTheDocument()
     expect(within(index).getByText('Schnittstellen')).toBeInTheDocument()
-    expect(within(index).getAllByText('0 von 13 geprüft').length).toBeGreaterThan(0)
 
     // Twelve real sections, each a landmark with its own heading. Scoped to
     // the review itself: the commercial rail beside it has headings of its
@@ -338,18 +360,18 @@ describe('Final Validation stays long, and every issue has a route', () => {
     expect(optionSaveStageFor(st())).toBe('LOCKED')
     const save = screen.getByRole('button', { name: 'Option speichern' })
     expect(save).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByText('Finale Prüfung bestätigt')).toBeInTheDocument()
-    expect(screen.getByText(/Noch 13 Abschnitte zu prüfen/)).toBeInTheDocument()
+    // Der gesperrte Knopf erklärt sich (Regel 12) — mit EINEM Satz am Knopf
+    // statt mit einem stehenden Kasten darunter. Wie viele Abschnitte noch
+    // offen sind, sagt der Index, und zwar als einzige Stelle.
+    expect(screen.getByText('Zuerst die Prüfung bestätigen.')).toBeInTheDocument()
 
-    const first = screen.getAllByRole('button', { name: 'Abschnitt geprüft' })[0]!
-    await user.click(first)
+    // Der Zwischenstand kommt jetzt aus dem Store: ein einzelner Abschnitt
+    // ist über die Oberfläche nicht mehr einzeln zu vermerken.
+    act(() => { st().acknowledgeReviewSection(REVIEW_SECTIONS[0]!.id) })
     expect(reviewProgressFor(st()).reviewed).toBe(1)
-    expect(screen.getAllByText('1 von 13 geprüft').length).toBeGreaterThan(0)
 
-    // The remaining eleven, then the confirmation.
-    for (const button of screen.getAllByRole('button', { name: 'Abschnitt geprüft' })) {
-      await user.click(button)
-    }
+    // The rest, in one click, then the confirmation.
+    reviewAllSections(user)
     expect(reviewProgressFor(st()).reviewed).toBe(REVIEW_SECTION_COUNT)
     expect(optionReviewStageFor(st())).toBe('READY')
     // Reviewed is not confirmed, and Save is still locked.
@@ -374,9 +396,11 @@ describe('Final Validation stays long, and every issue has a route', () => {
     // sections FIRST, and only then does the acceptance get withdrawn —
     // which is what reopens the schedule section as a blocker rather than
     // closing the whole stage on somebody mid-review.
-    for (const button of screen.getAllByRole('button', { name: 'Abschnitt geprüft' }).slice(0, 3)) {
-      await user.click(button)
-    }
+    act(() => {
+      for (const definition of REVIEW_SECTIONS.slice(0, 3)) {
+        st().acknowledgeReviewSection(definition.id)
+      }
+    })
     const handover = st().schedulePhases.find((p) => p.dependencyQuestionId)!
     act(() => { st().setScheduleDependencyConfirmed(handover.id, false) })
 
@@ -405,6 +429,69 @@ describe('Final Validation stays long, and every issue has a route', () => {
   })
 })
 
+describe('a summary line that counts a list opens it (owner, 16.09.2026)', () => {
+  it('keeps the sentence, names each decision behind it, and routes to the one the reader picks', async () => {
+    const user = userEvent.setup()
+    reachSchedule()
+    render(<App />)
+    openSchedule()
+    await user.click(screen.getByRole('button', { name: 'Terminplan bestätigen' }))
+    openValidation()
+
+    const kg400 = screen.getByRole('heading', { level: 3, name: /^KG.400 · Technische Anlagen$/ })
+      .closest('section')!
+    // THE SENTENCE STAYS. The disclosure adds the list under it; it does
+    // not replace the count that makes the section scannable.
+    const toggle = within(kg400).getByRole('button', { name: /gewählt · .* entschieden/ })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    // A real decision of the chapter, with the answer that is actually
+    // chosen — read through the same engine reading the chapter renders.
+    const row = within(kg400).getByText('Wärmeerzeuger').closest('li')!
+    expect(row).toHaveTextContent('Luft/Wasser-Wärmepumpe')
+
+    // The edit button is always in the DOM and always reachable — only its
+    // opacity depends on hover (rule 23/24 live in the stylesheet).
+    await user.click(within(row).getByRole('button', { name: /Bearbeiten.*Wärmeerzeuger/ }))
+
+    // It lands in the chapter that owns the decision, with the system that
+    // holds it open and focus on the decision itself — not on the page
+    // heading the shell focuses on every navigation.
+    expect(screen.getByRole('heading', { level: 1, name: /^KG.400 · Technische Anlagen$/ }))
+      .toBeInTheDocument()
+    expect(st().reviewFocusSectionId).toBe('kg400')
+    await waitFor(() => {
+      expect(document.querySelector('[data-decision="a-400-01"]')).toBeInTheDocument()
+    })
+    expect(document.activeElement?.closest('[data-decision]')?.getAttribute('data-decision'))
+      .toBe('a-400-01')
+    // The intent is a one-shot: honoured, then cleared.
+    expect(st().kgFocusServiceId).toBeNull()
+  })
+
+  it('closes on Escape and gives the toggle its focus back', async () => {
+    const user = userEvent.setup()
+    reachSchedule()
+    render(<App />)
+    openSchedule()
+    await user.click(screen.getByRole('button', { name: 'Terminplan bestätigen' }))
+    openValidation()
+
+    const kg400 = screen.getByRole('heading', { level: 3, name: /^KG.400 · Technische Anlagen$/ })
+      .closest('section')!
+    const toggle = within(kg400).getByRole('button', { name: /gewählt · .* entschieden/ })
+    await user.click(toggle)
+    const row = within(kg400).getByText('Wärmeerzeuger').closest('li')!
+    within(row).getByRole('button', { name: /Bearbeiten.*Wärmeerzeuger/ }).focus()
+
+    await user.keyboard('{Escape}')
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(toggle).toHaveFocus()
+  })
+})
+
 describe('the explicit save, and the one thing it unlocks', () => {
   it('creates one named, versioned, immutable snapshot and unlocks Client Mode', async () => {
     const user = userEvent.setup()
@@ -413,9 +500,7 @@ describe('the explicit save, and the one thing it unlocks', () => {
     openSchedule()
     await user.click(screen.getByRole('button', { name: 'Terminplan bestätigen' }))
     openValidation()
-    for (const button of screen.getAllByRole('button', { name: 'Abschnitt geprüft' })) {
-      await user.click(button)
-    }
+    reviewAllSections(user)
     await user.click(screen.getByRole('button', { name: 'Prüfung bestätigen' }))
 
     // Before the save, Client Mode is locked and the switch says why.
@@ -435,13 +520,24 @@ describe('the explicit save, and the one thing it unlocks', () => {
       (version as unknown as { version: number }).version = 99
     }).toThrow()
 
-    // The receipt names the Option, the version and the time, and the
-    // outcome takes focus (M-08).
-    expect(screen.getByText('Option gespeichert · Version 1')).toBeInTheDocument()
-    const heading = screen.getByRole('heading', { level: 1, name: /Option 1 ist kundenbereit/ })
-    expect(heading).toBeInTheDocument()
+    // THE SAVE LANDS ON `Präsentieren` (owner's decision, 15.09) — the
+    // receipt is not a station on the way. Seit dem 17.09.2026 IST der Beleg
+    // die Stufe: dieselbe Komponente, nicht eine schlichtere Abschrift
+    // derselben drei Angaben. Also trägt das Ziel den Beleg-Titel.
+    const heading = await screen.findByRole('heading', { level: 1, name: /Option 1 ist kundenbereit/ })
     await waitFor(() => expect(heading).toHaveFocus())
-    expect(screen.getByText('Kundenmodus freigeschaltet')).toBeInTheDocument()
+    expect(st().pipelineView).toBe('praesentieren')
+    expect(screen.getAllByText('Option gespeichert · Version 1').length).toBeGreaterThan(0)
+
+    // And the receipt is intact where it belongs: going back to the save
+    // step reads WHAT was saved, version, time and client mode included.
+    openValidation()
+    expect(screen.getAllByText('Option gespeichert · Version 1').length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('heading', { level: 1, name: /Option 1 ist kundenbereit/ }).length)
+      .toBeGreaterThan(0)
+    // Der freigeschaltete Fall trägt keinen eigenen Satz mehr (Owner,
+    // 17.09.2026) — die Zeile sagt es, und die Schaltfläche darunter tut es.
+    expect(screen.getAllByText('verfügbar').length).toBeGreaterThan(0)
 
     // And the meeting is genuinely open now.
     expect(clientModeAvailableForOption(st(), st().activeOptionId)).toBe(true)
@@ -519,14 +615,17 @@ describe('the explicit save, and the one thing it unlocks', () => {
     openSchedule()
     await user.click(screen.getByRole('button', { name: 'Terminplan bestätigen' }))
     openValidation()
-    for (const button of screen.getAllByRole('button', { name: 'Abschnitt geprüft' })) {
-      await user.click(button)
-    }
+    reviewAllSections(user)
     await user.click(screen.getByRole('button', { name: 'Prüfung bestätigen' }))
     await user.click(screen.getByRole('button', { name: 'Option speichern' }))
 
-    const heading = screen.getByRole('heading', { level: 1, name: /ist kundenbereit/ })
-    await waitFor(() => expect(heading).toHaveFocus())
+    // The route the save takes is the same under reduced motion, and so is
+    // the announcement channel: focus moves to the destination heading.
+    const landing = await screen.findByRole('heading', { level: 1, name: /ist kundenbereit/ })
+    await waitFor(() => expect(landing).toHaveFocus())
+    openValidation()
+    expect(screen.getAllByRole('heading', { level: 1, name: /ist kundenbereit/ }).length)
+      .toBeGreaterThan(0)
     // The meaning travels in the FOCUS MOVE and in PERSISTENT TEXT inside a
     // polite live region — never in the animation. That is M-08's
     // reduced-motion equivalent, and it is what this asserts: the receipt's
@@ -536,10 +635,9 @@ describe('the explicit save, and the one thing it unlocks', () => {
     // browser evidence is where that is checked).
     // The receipt IS a polite live region (there are other status regions on
     // the shell, so this asserts the receipt's own).
-    expect(screen.getByText('Option gespeichert · Version 1').closest('[role="status"]'))
+    expect(screen.getAllByText('Option gespeichert · Version 1')[0]!.closest('[role="status"]'))
       .not.toBeNull()
-    expect(screen.getByText('Kundenmodus freigeschaltet')).toBeInTheDocument()
-    expect(screen.getByText('Option gespeichert · Version 1')).toBeInTheDocument()
+    expect(screen.getAllByText('Option gespeichert · Version 1').length).toBeGreaterThan(0)
     // And the state is genuinely reached, not merely announced.
     expect(clientModeAvailableForOption(st(), st().activeOptionId)).toBe(true)
   })

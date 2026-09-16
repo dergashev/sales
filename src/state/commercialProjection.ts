@@ -176,6 +176,44 @@ export function railCompositionRows(
   return composition.rows.filter((row) => row.state !== 'undecided')
 }
 
+/**
+ * The rail's composition, split into the groups the Option DECIDES and the
+ * rest of the project's cost.
+ *
+ * Only KG 300, 400 and 700 are asked in this pipeline, so only those three
+ * carry a row a reader can act on. The others are not deleted from the
+ * arithmetic — they are real cost in the baseline, and a table whose rows do
+ * not add up to its own subtotal is the reconciliation defect rule 32 calls
+ * a release blocker. They are summed into ONE line instead, which keeps the
+ * table honest without pretending the reader has a decision to make there.
+ *
+ * `rest` is `null` when there is nothing to collapse: a single line saying
+ * `0 €` would be exactly the invented zero rule 16 forbids.
+ */
+export function railCompositionSplit(
+  composition: CommercialComposition,
+  decidedGroups: readonly CostGroup[],
+): Readonly<{
+  decided: readonly CompositionRow[]
+  rest: Readonly<{ exact: Decimal; sharePercent: number | null }> | null
+}> {
+  const asked = new Set<CostGroup>(decidedGroups)
+  const rows = railCompositionRows(composition)
+  const decided = rows.filter((row) => asked.has(row.group))
+  const others = rows.filter((row) => !asked.has(row.group) && row.exact !== null)
+  if (others.length === 0) return { decided, rest: null }
+  const exact = others.reduce((sum, row) => sum.add(row.exact!), new Decimal(0))
+  if (exact.isZero()) return { decided, rest: null }
+  const basis = composition.totalExact
+  return {
+    decided,
+    rest: {
+      exact,
+      sharePercent: basis.isZero() ? null : exact.div(basis).mul(100).toNumber(),
+    },
+  }
+}
+
 /* ── 3 · selected commercial effects (`Auswahl mit Preiswirkung`) ───────── */
 
 /**

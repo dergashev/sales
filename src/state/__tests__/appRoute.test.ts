@@ -62,7 +62,7 @@ const ROUTES: AppRoute[] = [
     projectId: 'DEMO-HAPPY-01',
     optionId: 'OPT-03',
     view: 'pruefen',
-    step: 'speichern',
+    step: null,
   },
   {
     kind: 'option',
@@ -125,6 +125,20 @@ describe('what the URL refuses to carry', () => {
     ]) {
       expect(decodeRoutePath(path), path).toBeNull()
     }
+  })
+
+  it('resolves a link saved before the Prüfen members were retired', () => {
+    // `finale-pruefung` and `speichern` were two positions on ONE surface,
+    // and the stage declares no members since 2026-09-16. A URL saved before
+    // that day still names a real place, so it lands on Prüfen rather than
+    // nowhere — and the encoder never writes either segment again.
+    for (const step of ['finale-pruefung', 'speichern']) {
+      expect(decodeRoutePath(`/projekt/P/option/O/pruefen/${step}`)).toEqual({
+        kind: 'option', projectId: 'P', optionId: 'O', view: 'pruefen', step: null,
+      })
+    }
+    expect(ROUTES.map((route) => routePath(route)).join(' '))
+      .not.toMatch(/finale-pruefung|speichern/)
   })
 })
 

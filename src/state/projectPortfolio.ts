@@ -508,8 +508,8 @@ export const ANY = ''
 
 export type PortfolioQuery = {
   text: string
-  country: string
   city: string
+  client: string
   manager: string
   statuses: readonly LifecycleStatus[]
   sort: PortfolioSort
@@ -523,8 +523,8 @@ export type PortfolioQuery = {
 
 export const DEFAULT_PORTFOLIO_QUERY: PortfolioQuery = {
   text: '',
-  country: ANY,
   city: ANY,
+  client: ANY,
   manager: ANY,
   statuses: [],
   sort: 'updatedDesc',
@@ -548,8 +548,8 @@ function haystack(project: PortfolioProject): string {
 export function matchesQuery(project: PortfolioRow, query: PortfolioQuery): boolean {
   const needle = query.text.trim().toLowerCase()
   if (needle !== '' && !haystack(project).includes(needle)) return false
-  if (query.country !== ANY && project.countryCode !== query.country) return false
   if (query.city !== ANY && project.city !== query.city) return false
+  if (query.client !== ANY && project.client !== query.client) return false
   if (query.manager !== ANY && project.manager !== query.manager) return false
   // No selected status means every status: an empty multi-select is "I have
   // not narrowed by status", never "nothing matches".
@@ -678,47 +678,38 @@ export function portfolioPage(
 
 /**
  * Option lists come from the WHOLE register, never from the visible subset —
- * otherwise choosing a country would delete the other countries from the
- * country list and the filter could not be undone from inside itself.
+ * otherwise choosing a city would delete the other cities from the list and
+ * the filter could not be undone from inside itself.
+ *
+ * There is no country filter: the register is German to a rounding error, so
+ * the control narrowed nothing while costing a column in the panel and a
+ * dependency between two selects. The country still LIVES on the project —
+ * it opens the card title and is searched by the text field — it simply has
+ * no facet of its own.
  */
-export function countryOptions(projects: readonly PortfolioProject[]): string[] {
-  return [...new Set(projects.map((p) => p.countryCode))].sort((a, b) => a.localeCompare(b))
+export function cityOptions(projects: readonly PortfolioProject[]): string[] {
+  return [...new Set(projects.map((p) => p.city))].sort((a, b) => a.localeCompare(b))
 }
 
-/** Cities narrow by the selected country; with no country, every city. */
-export function cityOptions(
-  projects: readonly PortfolioProject[],
-  country: string,
-): string[] {
-  const scoped = country === ANY ? projects : projects.filter((p) => p.countryCode === country)
-  return [...new Set(scoped.map((p) => p.city))].sort((a, b) => a.localeCompare(b))
+/**
+ * The client companies in the register.
+ *
+ * A facet of its own, not a text search: a sales rep remembers the PERSON
+ * and the firm before the address, and the free-text field can only find a
+ * company whose spelling the searcher already has exactly right.
+ */
+export function clientOptions(projects: readonly PortfolioProject[]): string[] {
+  return [...new Set(projects.map((p) => p.client))].sort((a, b) => a.localeCompare(b))
 }
 
 export function managerOptions(projects: readonly PortfolioProject[]): string[] {
   return [...new Set(projects.map((p) => p.manager))].sort((a, b) => a.localeCompare(b))
 }
 
-/**
- * The city a country change leaves behind.
- *
- * Returns the city that must be cleared, or `null` when the selection is
- * still valid. Naming this instead of silently resetting is the point: the
- * caller has to announce the reset, and a caller that forgets cannot claim
- * the control and the state agree.
- */
-export function invalidatedCity(
-  projects: readonly PortfolioProject[],
-  country: string,
-  city: string,
-): string | null {
-  if (city === ANY) return null
-  return cityOptions(projects, country).includes(city) ? null : city
-}
-
 export function activeFilterCount(query: PortfolioQuery): number {
   return (query.text.trim() !== '' ? 1 : 0)
-    + (query.country !== ANY ? 1 : 0)
     + (query.city !== ANY ? 1 : 0)
+    + (query.client !== ANY ? 1 : 0)
     + (query.manager !== ANY ? 1 : 0)
     + query.statuses.length
 }
@@ -727,8 +718,8 @@ export function activeFilterCount(query: PortfolioQuery): number {
 
 const PARAM = {
   text: 'q',
-  country: 'country',
   city: 'city',
+  client: 'client',
   manager: 'manager',
   status: 'status',
   sort: 'sort',
@@ -744,8 +735,8 @@ const PARAM = {
 export function encodePortfolioQuery(query: PortfolioQuery): string {
   const params = new URLSearchParams()
   if (query.text.trim() !== '') params.set(PARAM.text, query.text.trim())
-  if (query.country !== ANY) params.set(PARAM.country, query.country)
   if (query.city !== ANY) params.set(PARAM.city, query.city)
+  if (query.client !== ANY) params.set(PARAM.client, query.client)
   if (query.manager !== ANY) params.set(PARAM.manager, query.manager)
   for (const status of query.statuses) params.append(PARAM.status, status)
   if (query.sort !== DEFAULT_PORTFOLIO_QUERY.sort) params.set(PARAM.sort, query.sort)
@@ -761,8 +752,8 @@ export function decodePortfolioQuery(search: string): PortfolioQuery {
   const page = Number.parseInt(params.get(PARAM.page) ?? '', 10)
   return {
     text: params.get(PARAM.text) ?? '',
-    country: params.get(PARAM.country) ?? ANY,
     city: params.get(PARAM.city) ?? ANY,
+    client: params.get(PARAM.client) ?? ANY,
     manager: params.get(PARAM.manager) ?? ANY,
     // A link that repeats a status is still one selection of it.
     statuses: [...new Set(statuses)],
@@ -786,6 +777,8 @@ export type PortfolioValue =
      *  punctuation. Re-typeset for `en` by `localizeMoneyText` — never
      *  re-rounded, never recomputed. */
     display: string
+    /** The exact value the display was rounded FROM, for deriving rates. */
+    exact: string
     /** `subtotal` renames the row: an incomplete scope has no total. */
     coverage: 'total' | 'subtotal'
     asOf: string
@@ -848,6 +841,7 @@ export function portfolioValue(
       ? {
         kind: 'amount',
         display: formatGermanGrouped(project.syntheticValue.amount),
+        exact: project.syntheticValue.amount,
         coverage: 'total',
         asOf: project.syntheticValue.asOf,
         provenance: 'syntheticPortfolioFixture',
@@ -859,10 +853,36 @@ export function portfolioValue(
   return {
     kind: 'amount',
     display: snapshot.result.totalDisplay,
+    exact: snapshot.result.totalExact,
     coverage: snapshot.result.coverage,
     asOf: snapshot.savedAt,
     provenance: 'savedOptionSnapshot',
   }
+}
+
+/**
+ * The register's rate: value ÷ the very area the card already reports.
+ *
+ * Rule 39, both halves. The rate is derived FROM THE SUMS — one total
+ * divided by one area — never averaged across buildings, and the caller
+ * labels it with the norm that area belongs to (`WFL nach WoFlV` or
+ * `NUF nach DIN 277`), so the denominator a reader sees is the denominator
+ * that was used. A subtotal has no total to divide, an incomplete area has
+ * no sum to divide BY, and both say so instead of printing a rate that
+ * quietly means something narrower than its label.
+ *
+ * Whole euro, because the comparison it serves is «are we near the market
+ * or not» — a cent on a €/m² rate is precision the number does not have.
+ */
+export function portfolioUnitValue(
+  value: PortfolioValue,
+  metrics: PortfolioMetrics,
+): { kind: 'amount'; value: string } | { kind: 'unavailable' } {
+  if (value.kind !== 'amount' || value.coverage !== 'total') return { kind: 'unavailable' }
+  if (metrics.area.kind !== 'exact') return { kind: 'unavailable' }
+  const area = new Decimal(metrics.area.value)
+  if (area.lessThanOrEqualTo(0)) return { kind: 'unavailable' }
+  return { kind: 'amount', value: new Decimal(value.exact).dividedBy(area).toFixed(0) }
 }
 
 /**

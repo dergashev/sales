@@ -113,6 +113,12 @@
   /* --- Бренд и действия --- */
   --color-brand-accent:          var(--primitive-color-brand-orange-500);
   --color-action-primary-bg:     var(--primitive-color-orange-700);
+  /* PROVISIONAL (rule 2): accent colour for a TEXT action that must outrank
+     the citations around it — orange.700 (#C94700) on white, 5,0:1, i.e. the
+     button colour used as ink rather than as a fill. Deliberately NOT
+     brand-orange #FD5E00, which rule 5 reserves for the single hero metric
+     and which fails at text sizes. */
+  --color-text-action:           var(--primitive-color-orange-700);
   --color-action-primary-hover:  var(--primitive-color-orange-800);
   --color-action-primary-pressed:var(--primitive-color-orange-900);
   --color-action-primary-text:   var(--primitive-color-white);
@@ -457,6 +463,14 @@
      bestätigt · S. 15" ≈ 29 chars); an outlier combination wraps via
      `.a3-chip-col`'s `flex-wrap:wrap` instead of forcing this wider. */
   --measure-provenance-chip: 24ch;
+  /* [provisional] Die Statusspalte des Dokumentenregisters. Eine EIGENE
+     Spalte fester Breite, damit acht Zustände untereinander an derselben
+     Kante beginnen: rechtsbündig lief das Wort mit der Länge seines Grundes
+     mit, und die Marken standen als Treppe im Register. Bemessen an der
+     längsten bekannten Kombination («Geringe Erkennung · gescanntes PDF»
+     ≈ 34 Zeichen); ein längerer Grund bricht in der Spalte um, statt sie
+     zu verbreitern. */
+  --measure-register-state: 30ch;
   /* [provisional] TASK-22 measured media threshold. Below 15rem the card
      remains complete and selectable, but its decorative 4:3 media is absent. */
   --measure-option-media-min: 15rem;
@@ -516,6 +530,14 @@
   --layer-dialog-backdrop:90;
   --layer-dialog:        100;
   --layer-toast:         110;
+  /* provisional (16.09.2026): порядок двух претендентов ВНУТРИ одного
+     зарезервированного слота изменения (изолированный контекст наложения,
+     поэтому значения локальные и не соревнуются со шкалой выше).
+     Результат уже совершённого действия (дельта-чип) лежит НАД гипотезой
+     наведения (Geist-Vorschau): наведение на соседний вариант больше не
+     перекрывает и не гасит только что показанный результат. */
+  --layer-change-preview:  0;
+  --layer-change-result:   1;
 
   /* ============ ДВИЖЕНИЕ [ADR-PENDING] ============
      R-21: финальное значение доступно немедленно, motion никогда не
@@ -562,6 +584,29 @@
      мера основного текста ≤ 75ch. Прежние 1600 px были нарушением. */
   --content-max-width: 1200px;
   --measure-body-max: 75ch;
+  /* [provisional] Die Breite der Wertespalte einer Options-Zeile: so breit,
+     dass `Leitkennzahl Wohnen · WFL nach WoFlV` und der Betrag daneben in
+     je einer Zeile stehen, und nicht breiter — der Name der Option behält
+     den Rest. In `ch`, weil der Inhalt Text ist (Regel 3a/36). */
+  --measure-option-summary: 42ch;
+  /* [provisional] Die zwei Maße der Bauzeit-Gantt-Achse.
+     `--measure-schedule-label` ist die Namensspalte der Balkenzeilen,
+     `--measure-schedule-month` der Platz, den EINE Monatsmarke braucht:
+     `M12` über `März 27` — die längste Marke ist der Monatsname, nicht die
+     Zahl. Beide in `ch`, weil beide Textbreiten sind (Regel 3a/36); aus
+     ihnen rechnet `.a3-bz-gantt` die Mindestbreite, unter der die Achse
+     waagerecht scrollt statt ihre Beschriftungen übereinanderzulegen.
+
+     Die Namensspalte war 26ch und nahm damit gut ein Drittel des Panels für
+     Text, der ein Viertel davon braucht (Owner, 16.09.2026: die Balken
+     sollen breiter stehen). 16ch geben rund 15 % der Panelbreite an die
+     Balken zurück. KEINE harte Grenze für den Text: die längste deutsche
+     Bezeichnung (`Ausführungsplanung (LP5)`) bricht darin auf zwei Zeilen
+     um, und genau das soll sie — `.a3-bz-grow-label` trägt
+     `overflow-wrap`/`hyphens`, damit längere Sprachen (FR/ES bis +35 %)
+     umbrechen statt abzuschneiden. */
+  --measure-schedule-label: 16ch;
+  --measure-schedule-month: 8ch;
   --gutter-narrow: var(--space-4);
   --gutter-medium: var(--space-5);
   --gutter-wide:   var(--space-6);
@@ -592,6 +637,12 @@
      Workspace target's own right rail at ≈264px at 1440 and ≈226px at
      1280 (narrower still, same 1439px breakpoint the left rail already
      uses — see the `@media (max-width: 1439px)` block below). */
+  /* [provisional] Die Bereitschafts-Tafel (noch kein Preis) ist 30 % schmaler
+     als die kommerzielle Schiene: sie trägt eine Überschrift und einen Satz,
+     keine Beträge. `--panel-right-width` bleibt unangetastet — dessen Breite
+     ist gegen den längsten Betrag gemessen, den All3 je druckt (ADR TASK-15),
+     und was dort steht, steht hier nicht. */
+  --panel-right-width-readiness: calc(var(--panel-right-width) * .7);
   --panel-right-width-compact: 264px;
   /* SIDEBAR 01 - the rail's pinned Level 1 header gets a hard height budget
      (report S7/S9, AC-1/AC-2): <=320px at 1280x800, <=360px at 1440x900,
@@ -642,8 +693,18 @@
   --size-cockpit-basis-slot: 20px;
   /* The pre-reserved change-feedback region: empty and silent most of the
      time, and the same height either way, so a commit and its expiry both
-     cost ZERO downstream geometry. */
-  --size-cockpit-change-slot: 34px;
+     cost ZERO downstream geometry. Three caption lines, not two: the box
+     now also holds the DC-28 preview (label line + the future total with
+     its delta, which wraps to two in this column), and a reservation that
+     fits only the shorter of its two tenants is not a reservation. */
+  --size-cockpit-change-slot: calc(3 * var(--type-caption-line));
+  /* [provisional] Ширина вертикального рельса пути (навигация v2). Своя, а
+     не `--panel-left-width`: тот токен принадлежит панелям оболочки и
+     участвует в закрытом расчёте «workspace ≥ rail» на полу 1280 — рельс
+     пути шире на 30 % по решению владельца прототипа (270/246 px против
+     208/189), и переиспользование токена молча раздвинуло бы вместе с ним
+     всё, что от него зависит. Тот же брейкпоинт 1439, та же пропорция. */
+  --panel-journey-rail-width: 270px;
   --panel-left-width: 208px;  /* [provisional] навигационный сайдбар оболочки;
                                  введён при пересборке прототипа 05.08 — правой
                                  панели токен уже существовал, левой не было.
@@ -668,6 +729,37 @@
   --gutter-workspace: var(--space-5);
   --size-app-min-width: 1280px; /* [provisional] supported shell minimum;
                                    requires design-token ADR ratification */
+  /* [provisional] height of the global header, declared rather than measured:
+     a sticky panel inside the scrolling workspace needs the port's height,
+     and the port is the viewport minus this bar. Applied to the bar itself,
+     so the two cannot drift apart. Requires design-token ADR ratification. */
+  --size-global-header-height: 62px;
+  /* [provisional] ceiling of the rail's hover-preview overlay: four caption
+     lines plus its own padding. Measured against the longest German preview
+     sentence in the narrow rail — the one that clipped at three. Requires
+     design-token ADR ratification. */
+  --size-cockpit-preview-slot: calc(4 * var(--type-caption-line) + 2 * var(--space-1));
+  /* [provisional] VR3 · Variante `v3`: die Farben des Terminplan-Gantts.
+     Sie sind NICHT frei gewählt — sie sind die Palette des ALL3-Bauzeit-
+     Rechners, aus dem dieser Bildschirm seine Rechenlogik übernimmt, damit
+     dieselbe Phase in beiden Werkzeugen dieselbe Farbe trägt. Die Phase
+     steht in jeder Zeile auch als Text daneben, deshalb trägt die Farbe
+     keine Bedeutung allein (Regel 8). Das Markenorange kommt hier bewusst
+     NICHT vor: es gehört dem Heldenbetrag (Regel 31). Erfordert eine
+     Design-Token-ADR. */
+  --color-schedule-phase-contract: #1d4ed8;
+  --color-schedule-phase-design: #0b24fb;
+  --color-schedule-phase-permit: #0e7490;
+  --color-schedule-phase-execution: #7c3aed;
+  --color-schedule-phase-foundation: #b45309;
+  --color-schedule-phase-shell: #3c887e;
+  --color-schedule-phase-fitout: #98ce00;
+  --color-schedule-phase-acceptance: #525252;
+  /* [provisional] Zahlungsmeilensteine, ebenfalls aus dem Rechner. */
+  --color-schedule-payment-design: #0e7490;
+  --color-schedule-payment-shell: #15803d;
+  --color-schedule-payment-fitout: #a16207;
+  --color-schedule-payment-acceptance: #c44400;
   /* --duration-toast-undo здесь НЕ живёт: окно отмены — политика
      безопасности (SAFETY-001), а не визуальный токен раздела 13 (R-15).
      Значение — `src/config/ui-policy.ts`. */
@@ -816,7 +908,7 @@
 @media (max-width: 1439px) {
   /* VR2-03 Acceptance remediation (cycle 5): approved target measures
      ~189px at 1280 (narrowing from the prior 232px working value). */
-  :root { --panel-left-width: 189px; }
+  :root { --panel-left-width: 189px; --panel-journey-rail-width: 246px; }
   /* Documents workspace at the 1280 floor: ~1216px of working width, a
      288px rail and a 20px gap (accepted target, "1280px desktop"). The
      rail does NOT collapse at this supported width — it narrows. 20px is

@@ -5,14 +5,23 @@
 по золотому пути. Заменил сканер исходника, который давал 2 вместо
 202: он мерил написанное, а не увиденное.
 
-**Всего 3** · перевод есть, мост не подключён: 1
-· перевода нет (в поставку копирайта): 2
+**Всего 8** · перевод есть, мост не подключён: 2
+· перевода нет (в поставку копирайта): 6
 
 ## Перевод есть — строка не проходит через мост (правится в src)
 
+- Marge Eigenleistung nach Rabatt:
 - Projektparameter bestätigt (Gebäude, Flächen, Einheiten)
 
 ## Перевода нет — в следующую поставку копирайта
 
-- Freiburg im Breisgau
+- Angebot prüfen
+- Druckansicht öffnen
+- Eigenes Ausgabeprofil für die Druckausgabe mit eigener Prüfung — die Freigabe der E-Mail gilt hier nicht.
 - Güterbogen Projektentwicklung GmbH
+- Konfiguration je Gebäude bestätigt
+- Sehr geehrte Damen und Herren,
+
+anbei erhalten Sie unser indikatives Angebot.
+
+Mit freundlichen Grüßen

@@ -187,19 +187,21 @@ describe('AUD-01: превью гасится на КАЖДОМ заявленн
     expect(st().preview).toBeNull()
   })
 
-  it('hover нового варианта гасит ещё не улетевший дельта-чип предыдущей фиксации (live Playwright finding: оба делят один якорь и рисовались друг на друге)', () => {
+  it('hover нового варианта НЕ гасит ещё не улетевший дельта-чип предыдущей фиксации: результат клика живёт свой срок и лежит СЛОЕМ ВЫШЕ превью (PO, 16.09.2026)', () => {
     // Фиксация: чип показан.
     st().setKg300('fassade', 'klinker')
     expect(st().activeDelta).not.toBeNull()
     expect(st().preview).toBeNull()
-    // Немедленный hover ДРУГОГО варианта, пока чип ещё виден — это ровно
-    // сценарий, который живой Playwright-прогон на точном кандидате нашёл
-    // сломанным: `.a3-preview` и `.a3-delta` — оба position:absolute в
-    // одном `.a3-change-slot-anchor`, без z-index — рисовались один на
-    // другом. Приоритет контракта (components-core.md §13): превью > чип.
+    // Немедленный hover ДРУГОГО варианта, пока чип ещё виден. Прежде это
+    // гасило чип (приоритет «превью > чип»), и результат клика исчезал у
+    // пользователя под курсором, который просто шёл к следующему варианту.
+    // Теперь оба состояния сосуществуют, а очерёдность решается слоем:
+    // `.a3-cockpit-change` над `.a3-preview` в одной ячейке
+    // зарезервированного слота (components.css, токены
+    // `--layer-change-result` / `--layer-change-preview`).
     st().previewOption({ kind: 'kg300', buildingId: 'DEMO-B-A', groupId: 'fassade', value: 'timber' })
     expect(st().preview).not.toBeNull()
-    expect(st().activeDelta).toBeNull()
+    expect(st().activeDelta).not.toBeNull()
   })
 })
 
@@ -225,7 +227,7 @@ describe('AUD-01: подпись превью/чипа — человеческ�
     // `c.label` для самой карточки — не новый словарь, тот же самый.
     const enTx = (deText: string) => translateText(deText, 'en')
     expect(translatedChangeLabel(change, identityT, enTx))
-      .toBe('Façade · Render on the ground floor, timber above')
+      .toBe('Facade · Render on the ground floor, timber above')
   })
 
   it('AC-4: ни один выбор ЛЮБОЙ KG300/KG400/Zertifikate-группы не отдаёт "groupId · value" (полный обход каталога)', () => {

@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   decodeRoutePath,
+  locationRoutePath,
   routeHref,
+  routeUrl,
   routePath,
   type AppRoute,
   type ProjectRouteStage,
@@ -176,7 +178,7 @@ export function useAppRouting(): RouteNotice {
 
   const applyFromLocation = useCallback((store: Store, boot = false) => {
     if (typeof window === 'undefined') return
-    const decoded = decodeRoutePath(window.location.pathname)
+    const decoded = decodeRoutePath(locationRoutePath(window.location.pathname))
     /**
      * `/` ON BOOT IS NOT A DESTINATION, it is the absence of one.
      *
@@ -206,7 +208,7 @@ export function useAppRouting(): RouteNotice {
           null, '', routeHref(here, window.location.search),
         )
       }
-      setNotice(window.location.pathname === '/' ? null : 'unknownProject')
+      setNotice(locationRoutePath(window.location.pathname) === '/' ? null : 'unknownProject')
       return
     }
     setNotice(applyRoute(store, decoded))
@@ -232,8 +234,8 @@ export function useAppRouting(): RouteNotice {
   useEffect(() => {
     if (typeof window === 'undefined' || !booted.current || !path) return
     if (client) return
-    if (window.location.pathname === path) return
-    window.history.pushState(null, '', `${path}${window.location.search}`)
+    if (locationRoutePath(window.location.pathname) === path) return
+    window.history.pushState(null, '', `${routeUrl(path)}${window.location.search}`)
   }, [path, client])
 
   return notice

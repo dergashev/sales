@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  ANY,
   DEFAULT_PORTFOLIO_QUERY,
   DISPLAY_ONLY_PORTFOLIO_COUNT,
   NAVIGABLE_PORTFOLIO_COUNT,
@@ -8,11 +7,10 @@ import {
   PORTFOLIO_PROJECT_COUNT,
   activeFilterCount,
   cityOptions,
-  countryOptions,
+  clientOptions,
   deadlineState,
   decodePortfolioQuery,
   encodePortfolioQuery,
-  invalidatedCity,
   isNavigableProject,
   latestPresentableSnapshot,
   managerOptions,
@@ -200,6 +198,7 @@ describe('the value comes from a saved snapshot or says it does not exist', () =
     expect(portfolioValue(byId('DEMO-HAPPY-01'), state)).toEqual({
       kind: 'amount',
       display: '4.123.000',
+      exact: '4123456.78',
       coverage: 'total',
       asOf: '2026-09-02T10:00:00.000Z',
       provenance: 'savedOptionSnapshot',
@@ -231,6 +230,7 @@ describe('the value comes from a saved snapshot or says it does not exist', () =
     expect(portfolioValue(byId('PORTFOLIO-HH-01'), emptyState)).toEqual({
       kind: 'amount',
       display: '51.240.000',
+      exact: '51240000',
       coverage: 'total',
       asOf: '2026-09-03T15:45:00+02:00',
       provenance: 'syntheticPortfolioFixture',
@@ -292,7 +292,7 @@ describe('search, filters and their combination', () => {
     expect(titles({ statuses: ['new', 'in_progress'] }))
       .toEqual([T.lindenhain, T.guterbogen, T.hamburg, T.wien])
     // AND across groups narrows the OR result.
-    expect(titles({ statuses: ['new', 'in_progress'], country: 'AT' })).toEqual([T.wien])
+    expect(titles({ statuses: ['new', 'in_progress'], city: 'Wien' })).toEqual([T.wien])
     // No selected status is every status, never nothing.
     expect(titles({ statuses: [] })).toHaveLength(5)
   })
@@ -307,23 +307,20 @@ describe('search, filters and their combination', () => {
     expect(titles({ statuses: ['review_required'] })).toEqual([])
   })
 
-  it('offers options from the whole register, and narrows cities by country', () => {
-    expect(countryOptions(PORTFOLIO_PROJECTS)).toEqual(['AT', 'DE'])
+  it('offers options from the whole register', () => {
+    expect(clientOptions(PORTFOLIO_PROJECTS)).toEqual([
+      'Donauquartier Entwicklung GmbH', 'Güterbogen Projektentwicklung GmbH',
+      'Isargrund Wohnen KG', 'Lindenhain Wohnen GmbH', 'Nordraum Projekt GmbH',
+    ])
     expect(managerOptions(PORTFOLIO_PROJECTS)).toEqual([
       'Daniel Weber', 'Lena Hoffmann', 'Miriam Schneider', 'Tobias Keller',
     ])
-    expect(cityOptions(PORTFOLIO_PROJECTS, ANY)).toContain('Wien')
-    expect(cityOptions(PORTFOLIO_PROJECTS, 'DE')).not.toContain('Wien')
-    // Even with a country selected, the COUNTRY list keeps every country —
-    // otherwise the filter could not be undone from inside itself.
-    expect(countryOptions(PORTFOLIO_PROJECTS)).toContain('AT')
-  })
-
-  it('names the city a country change invalidates, and only then', () => {
-    expect(invalidatedCity(PORTFOLIO_PROJECTS, 'DE', 'Wien')).toBe('Wien')
-    expect(invalidatedCity(PORTFOLIO_PROJECTS, 'DE', 'Leipzig')).toBeNull()
-    expect(invalidatedCity(PORTFOLIO_PROJECTS, ANY, 'Wien')).toBeNull()
-    expect(invalidatedCity(PORTFOLIO_PROJECTS, 'DE', ANY)).toBeNull()
+    // Every city the register holds, whatever is selected — otherwise the
+    // filter could not be undone from inside itself. There is no country
+    // facet to scope them by: the country lives on the card title and in the
+    // text search, and has no control of its own.
+    expect(cityOptions(PORTFOLIO_PROJECTS)).toContain('Wien')
+    expect(cityOptions(PORTFOLIO_PROJECTS)).toContain('Leipzig')
   })
 
   it('counts every active narrowing, statuses individually', () => {
@@ -331,8 +328,8 @@ describe('search, filters and their combination', () => {
     expect(activeFilterCount({ ...DEFAULT_PORTFOLIO_QUERY, text: '  ' })).toBe(0)
     expect(activeFilterCount({
       ...DEFAULT_PORTFOLIO_QUERY,
-      text: 'a', country: 'DE', city: 'Leipzig', manager: 'Daniel Weber',
-      statuses: ['new', 'archive'],
+      text: 'a', city: 'Leipzig', client: 'Nordraum Projekt GmbH',
+      manager: 'Daniel Weber', statuses: ['new', 'archive'],
     })).toBe(6)
   })
 })
@@ -473,8 +470,8 @@ describe('the URL carries exactly the register state', () => {
   it('round-trips every field', () => {
     const query: PortfolioQuery = {
       text: 'Hafenbogen',
-      country: 'DE',
       city: 'Hamburg',
+      client: 'Nordraum Projekt GmbH',
       manager: 'Daniel Weber',
       statuses: ['new', 'ready_to_pitch'],
       sort: 'createdAsc',

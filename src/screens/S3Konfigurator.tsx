@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useSemanticMotion } from '../design-system/motion'
-import { KG_SCOPE_GROUPS } from '../engine/kgConfiguration'
+import { KG_DECIDED_SCOPE_GROUPS } from '../engine/kgConfiguration'
 import {
   hasKgConfiguration,
   kgDecidedScopeCount,
@@ -65,21 +65,24 @@ export function S3Konfigurator() {
   const group = kgGroupOfStep(currentId)
   const decided = kgDecidedScopeCount(s)
   const scopeComplete = kgScopeDecisionsComplete(s)
-  const total = KG_SCOPE_GROUPS.length
+  const total = KG_DECIDED_SCOPE_GROUPS.length
 
   // VR2-09 · the DIRECTION verb: ordered progress through the configuration
   // is communicated by the entering stage arriving from the side it comes
   // from. Enter-only, so the DOM keeps the replacement semantics every
   // navigation test asserts.
   const { direction, reduced } = useSemanticMotion()
+  // The motion's direction reads the ASKED sequence: a baseline chapter
+  // opened directly is not in it, and `indexOf` answering -1 simply means
+  // "no position", which is what it is.
   const stageIndex = group
-    ? KG_SCOPE_GROUPS.indexOf(group) + 1
+    ? KG_DECIDED_SCOPE_GROUPS.indexOf(group as never) + 1
     : currentId === CONFIGURATOR_STEP.RESPONSIBILITY
-      ? KG_SCOPE_GROUPS.length + 1
+      ? KG_DECIDED_SCOPE_GROUPS.length + 1
       : currentId === CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE
-        ? KG_SCOPE_GROUPS.length + 2
+        ? KG_DECIDED_SCOPE_GROUPS.length + 2
         : currentId === CONFIGURATOR_STEP.FINAL_VALIDATION
-          ? KG_SCOPE_GROUPS.length + 3
+          ? KG_DECIDED_SCOPE_GROUPS.length + 3
           : 0
   const previousStageIndexRef = useRef(stageIndex)
   const stageDirection = stageIndex >= previousStageIndexRef.current ? 'forward' : 'backward'
@@ -243,7 +246,11 @@ export function ConfigurationModeReadiness() {
   return (
     <aside
       aria-label={t(headingKey)}
-      className="flex h-full w-panel-right min-w-0 max-w-panel-right shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
+      /* Narrower than the commercial rail it stands in for: this panel
+         carries a heading and one sentence, never an amount, so the width
+         measured against the longest total All3 prints buys nothing here —
+         and the table beside it needs the room. */
+      className="a3-modeready flex h-full min-w-0 shrink-0 flex-col overflow-y-auto border-l border-border-strong bg-surface-default"
     >
       <ModeChangeNotice />
     </aside>

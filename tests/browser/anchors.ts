@@ -385,7 +385,7 @@ export const EVIDENCE = {
 
 export const DOCUMENT_SOURCE = {
   register: 'Dokumentseiten',
-  inspect: 'Beleg ansehen',
+  inspect: 'Vorschau',
   /** The accessible name (aria-label), not the visible short label. */
   openSource: / · Quelle öffnen · .+, Seite \d+$/,
   position: /^Seite \d+ von \d+$/,

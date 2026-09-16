@@ -8,19 +8,16 @@ import {
   PORTFOLIO_SORTS,
   activeFilterCount,
   cityOptions,
-  countryOptions,
-  deadlineState,
+  clientOptions,
   decodePortfolioQuery,
   encodePortfolioQuery,
-  invalidatedCity,
-  latestPresentableSnapshot,
   managerOptions,
   portfolioPage,
   portfolioTitle,
+  portfolioUnitValue,
   portfolioValue,
   resolveProjectLifecycles,
   selectPortfolio,
-  type DeadlineState,
   type PortfolioAggregate,
   type PortfolioProject,
   type PortfolioQuery,
@@ -39,17 +36,15 @@ import { Combobox } from '../components/controls'
 import { FormField, SelectField } from '../components/designSystem'
 import { EmptyState } from '../components/DataStates'
 import { localizeMoneyText, useT } from '../i18n'
-import { MediaFrame } from '../design-system/MediaFrame'
 import { Pagination } from '../design-system/Pagination'
 import { SemanticStatus } from '../design-system/SemanticStatus'
-import { projectAsset } from '../assets/project-media'
 import { startContinuityTransition, useSemanticMotion } from '../design-system/motion'
 
 /**
  * The Projects portfolio — the product's root register.
  *
  * It answers five questions without opening anything: which projects match
- * the country, city, manager or lifecycle state I need · which client
+ * the city, client, manager or lifecycle state I need · which client
  * meeting is next · what is this project's scale and latest value · can I
  * continue configuring it · is a client-ready presentation available.
  *
@@ -136,33 +131,6 @@ function formatDate(iso: string, language: Locale): string {
   }).format(date)
 }
 
-/**
- * The meeting instant, split into the two facts it carries.
- *
- * The DAY is what ranks the queue and takes the heading weight; the CLOCK
- * TIME is the detail that sits beside it. They are formatted separately —
- * never sliced out of one formatted string — so every locale keeps its own
- * order and punctuation, and both halves stay inside one `<time datetime>`
- * carrying the exact ISO instant.
- */
-function formatMeeting(iso: string, language: Locale): { day: string; weekday: string; clock: string } {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return { day: '—', weekday: '', clock: '' }
-  const tag = intlTag(language)
-  const part = (options: Intl.DateTimeFormatOptions) => (
-    new Intl.DateTimeFormat(tag, options).format(date)
-  )
-  return {
-    // The CALENDAR DAY alone at heading weight. The weekday used to ride
-    // with it and, at 24 px in a 232 px column, `Fri, 11/09/2026` broke
-    // across two lines mid-date in `en` while `Fr., 11.09.2026` fitted in
-    // `de` — one composition that only held in one locale.
-    day: part({ day: '2-digit', month: '2-digit', year: 'numeric' }),
-    weekday: part({ weekday: 'short' }),
-    clock: part({ hour: '2-digit', minute: '2-digit' }),
-  }
-}
-
 /** Narrow no-break space between number and unit (rule 7), never a plain one. */
 const NNBSP = ' '
 
@@ -197,13 +165,12 @@ export function OpportunityList({
   const panelId = useId()
   const [query, applyQuery] = usePortfolioQuery()
   const [filtersOpen, setFiltersOpen] = useState(() => activeFilterCount(query) > 0)
-  const [cityResetNotice, setCityResetNotice] = useState<string>('')
   const [announcement, setAnnouncement] = useState('')
   const countRef = useRef<HTMLParagraphElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
 
-  const countries = useMemo(() => countryOptions(projects), [projects])
-  const cities = useMemo(() => cityOptions(projects, query.country), [projects, query.country])
+  const cities = useMemo(() => cityOptions(projects), [projects])
+  const clients = useMemo(() => clientOptions(projects), [projects])
   const managers = useMemo(() => managerOptions(projects), [projects])
 
   /**
@@ -309,34 +276,6 @@ export function OpportunityList({
     })
   }
 
-  /**
-   * Changing the country can invalidate the city. The reset is DELIBERATE
-   * and announced once: the known failure class here is a dependent select
-   * whose visible value and filtered state stop agreeing, and the only way
-   * to be sure they agree is to clear the value in the same update that
-   * changes its parent.
-   */
-  const changeCountry = (country: string) => {
-    const stale = invalidatedCity(projects, country, query.city)
-    if (stale) {
-      const notice = t('portfolio.filter.cityReset', {
-        city: stale,
-        country: country === ANY ? t('portfolio.filter.any') : country,
-      })
-      /* A live region only speaks when its content CHANGES. Two country
-         changes that invalidate the same city produce the same sentence, and
-         the second reset would have been silent — the announcement is the
-         only signal that a value the user can still see in the select has
-         just stopped applying. A trailing space makes the string new without
-         making it read differently, the same device the CRM placeholders use
-         for a repeated press. */
-      setCityResetNotice((prev) => (prev === notice ? `${notice} ` : notice))
-    } else {
-      setCityResetNotice('')
-    }
-    patch({ country, city: stale ? ANY : query.city })
-  }
-
   const toggleStatus = (status: LifecycleStatus, checked: boolean) => {
     patch({
       statuses: checked
@@ -346,30 +285,11 @@ export function OpportunityList({
   }
 
   const clearAll = () => {
-    setCityResetNotice('')
     applyQuery(DEFAULT_PORTFOLIO_QUERY)
   }
 
   const openProject = (id: string) => {
     startContinuityTransition(reduced, () => s.openOpportunity(id))
-  }
-
-  /**
-   * The client view is reached through the EXISTING preflight, never around
-   * it. This selects the project and the Option whose saved baseline is
-   * client-valid, then opens `ClientOutputGateDialog` — the one gate in the
-   * system — which re-checks the building scope and the save state itself
-   * and is the only thing that may set presentation mode. Nothing here
-   * decides that a client may see anything.
-   */
-  const openClientView = (id: string) => {
-    const snapshot = latestPresentableSnapshot(s, id)
-    if (!snapshot) return
-    startContinuityTransition(reduced, () => {
-      s.openOpportunity(id)
-      s.openOption(snapshot.optionId)
-      s.setGateOpen(true)
-    })
   }
 
   const chips: Array<{ id: string; label: string; clear: () => void }> = [
@@ -378,15 +298,15 @@ export function OpportunityList({
       label: t('portfolio.filter.chip.text', { value: query.text.trim() }),
       clear: () => patch({ text: '' }),
     }] : []),
-    ...(query.country !== ANY ? [{
-      id: 'country',
-      label: t('portfolio.filter.chip.country', { value: query.country }),
-      clear: () => changeCountry(ANY),
-    }] : []),
     ...(query.city !== ANY ? [{
       id: 'city',
       label: t('portfolio.filter.chip.city', { value: query.city }),
       clear: () => patch({ city: ANY }),
+    }] : []),
+    ...(query.client !== ANY ? [{
+      id: 'client',
+      label: t('portfolio.filter.chip.client', { value: query.client }),
+      clear: () => patch({ client: ANY }),
     }] : []),
     ...(query.manager !== ANY ? [{
       id: 'manager',
@@ -473,23 +393,11 @@ export function OpportunityList({
                 transition={{ duration: reduced ? 0 : 0.2, ease: [0.25, 0.6, 0.3, 1] }}
                 style={{ overflow: 'hidden' }}
               >
-                {/* ONE grid, four cells — three comboboxes and the status
-                    set share it instead of a grid stacked above a fieldset.
-                    That single change is most of the panel's 196 → 138 px:
-                    the status options are no longer paying for a row of
-                    their own. */}
+                {/* ONE grid — the comboboxes and the status set share it
+                    instead of a grid stacked above a fieldset. That single
+                    change is most of the panel's 196 → 138 px: the status
+                    options are no longer paying for a row of their own. */}
                 <div className="a3-pf-panel-grid">
-                  <Combobox
-                    id="portfolio-country"
-                    label={t('portfolio.filter.country.label')}
-                    value={query.country}
-                    options={[
-                      { value: ANY, label: t('portfolio.filter.any') },
-                      ...countries.map((value) => ({ value, label: value })),
-                    ]}
-                    onChange={changeCountry}
-                    placeholder={t('portfolio.filter.any')}
-                  />
                   <Combobox
                     id="portfolio-city"
                     label={t('portfolio.filter.city.label')}
@@ -499,6 +407,17 @@ export function OpportunityList({
                       ...cities.map((value) => ({ value, label: value })),
                     ]}
                     onChange={(city) => patch({ city })}
+                    placeholder={t('portfolio.filter.any')}
+                  />
+                  <Combobox
+                    id="portfolio-client"
+                    label={t('portfolio.filter.client.label')}
+                    value={query.client}
+                    options={[
+                      { value: ANY, label: t('portfolio.filter.any') },
+                      ...clients.map((value) => ({ value, label: value })),
+                    ]}
+                    onChange={(client) => patch({ client })}
                     placeholder={t('portfolio.filter.any')}
                   />
                   <Combobox
@@ -557,7 +476,6 @@ export function OpportunityList({
         {/* Two polite regions, two different facts. Merging them would make
             a city reset overwrite a result count that had just been read. */}
         <p className="sr-only" role="status" aria-live="polite">{announcement}</p>
-        <p className="sr-only" role="status" aria-live="polite">{cityResetNotice}</p>
 
         {/* Two empty states, kept distinct. An account with no projects at
             all offers NO reset — there is nothing to reset — while a filter
@@ -623,7 +541,6 @@ export function OpportunityList({
                     project={project}
                     language={language}
                     onOpen={project.displayOnly ? null : () => openProject(project.id)}
-                    onOpenClientView={project.displayOnly ? null : () => openClientView(project.id)}
                   />
                 </motion.li>
               ))}
@@ -654,44 +571,20 @@ export function OpportunityList({
 /* ──────────────────────────────── card ──────────────────────────────── */
 
 function PortfolioCard({
-  project, language, onOpen, onOpenClientView,
+  project, language, onOpen,
 }: {
   project: PortfolioRow
   language: Locale
   /** `null` for a display-only record: there is nothing to open. */
   onOpen: (() => void) | null
-  onOpenClientView: (() => void) | null
 }) {
   const s = useStore()
   const t = useT()
-  const asset = projectAsset(project.heroAssetId)
   const title = portfolioTitle(project)
   const value = portfolioValue(project, s)
-  const deadline = useDeadline(project.nextClientMeetingAt)
-  const meeting = deadline.kind === 'none' ? null : formatMeeting(deadline.at, language)
+  const unitValue = portfolioUnitValue(value, project.metrics)
 
   const configureLabel = t('portfolio.card.configure')
-  const clientViewLabel = t('portfolio.card.clientView')
-
-  /**
-   * The client view is never opened from here directly. A display-only
-   * record has no Option at all; a real project needs a saved, client-valid
-   * baseline, and the decision to show it belongs to the existing gate
-   * modal — this button only says whether that gate is reachable and, when
-   * it is, hands over to the project so the gate can ask its own questions.
-   */
-  const clientReady = !project.displayOnly
-    && latestPresentableSnapshot(s, project.id) !== null
-
-  /**
-   * A display-only record states its reason ONCE, at card level, and both
-   * blocked actions point at that one sentence. Passing it as each button's
-   * own `disabledReason` printed it three times on one card — the same
-   * duplicated-message defect this ticket removes from the account popover.
-   */
-  const clientViewBlockedReason = project.displayOnly
-    ? undefined
-    : clientReady ? undefined : t('portfolio.card.clientViewLocked')
 
   const displayOnlyReasonId = `${project.id}-display-only`
   const blockedBy = project.displayOnly ? displayOnlyReasonId : undefined
@@ -700,25 +593,29 @@ function PortfolioCard({
     ? t('portfolio.card.wfl')
     : t('portfolio.card.nuf')
 
+  /**
+   * The RATE has a label of its own, and it says «cost».
+   *
+   * It used to borrow the area's label, on the theory that the number
+   * («3.327 €/m²») carried the numerator. It does not when there is no
+   * number: a card whose rate cannot be computed printed
+   * `NUF nach DIN 277 · Preis nicht ermittelt` — an AREA that reads as
+   * unmeasured — directly above a second cell with the same label and the
+   * area's actual value. Two cells, one label, contradictory values.
+   *
+   * The label names the cost and nothing else (owner, 16.09.2026): the
+   * denominator is written out in full one cell away, on the area this card
+   * reports, so naming it twice on one card named nothing new and made the
+   * shorter, more important word («Kosten») the tail of a standard's name.
+   * Worth knowing: rule 39 requires a rate to name its denominator with its
+   * norm, and this card now leans on the neighbouring cell for that. It is a
+   * register of the reader's own projects, not a client deliverable — in the
+   * offer itself the rate keeps its norm.
+   */
+  const rateLabel = t('portfolio.card.rate')
+
   return (
     <>
-      <div
-        className="a3-pf-media"
-        /* Continuity belongs to a destination. A display-only record has
-           none, so it carries no shared name and no transition can imply
-           that clicking it goes somewhere. */
-        style={onOpen ? { viewTransitionName: `project-media-${project.id}` } : undefined}
-      >
-        <MediaFrame
-          ratio="card"
-          state={asset ? 'loaded' : 'fallback'}
-          src={asset?.url}
-          alt={asset ? t(asset.altKey) : undefined}
-          seed={project.id}
-          sourceId={asset?.assetId}
-        />
-      </div>
-
       <div className="a3-pf-body">
         <div className="a3-pf-identity">
           <div className="a3-pf-status-line">
@@ -744,7 +641,34 @@ function PortfolioCard({
           </p>
         </div>
 
+        {/* The value leads the row, in the row's own format. */}
         <dl className="a3-pf-metrics">
+          <div className="a3-pf-metric">
+            <dt>
+              {value.kind === 'amount' && value.coverage === 'subtotal'
+                ? t('portfolio.card.value.subtotal')
+                : t('portfolio.card.value')}
+            </dt>
+            <dd className="numeric" data-unknown={value.kind === 'notCalculated' || undefined}>
+              {value.kind === 'notCalculated'
+                ? t('portfolio.card.value.notCalculated')
+                : `${localizeMoneyText(value.display, language)}${NNBSP}€`}
+            </dd>
+          </div>
+          {/* The rate beside the total, in the same format. A total alone
+              cannot answer «are we competitive»: €2.000/m² of housing and
+              €2.000/m² of a 200-unit commercial block are different
+              propositions, and the reader compares the RATE. Its label
+              names the area it was divided by (rule 39) — the same area
+              two cells further along, never a second, unnamed one. */}
+          <div className="a3-pf-metric">
+            <dt>{rateLabel}</dt>
+            <dd className="numeric" data-unknown={unitValue.kind !== 'amount' || undefined}>
+              {unitValue.kind === 'amount'
+                ? `${formatCount(unitValue.value, language)}${NNBSP}€`
+                : t('portfolio.card.value.notCalculated')}
+            </dd>
+          </div>
           <div className="a3-pf-metric">
             <dt>{t('portfolio.card.buildings')}</dt>
             <dd className="numeric">{formatCount(project.metrics.buildingCount, language)}</dd>
@@ -766,33 +690,6 @@ function PortfolioCard({
           />
         </dl>
 
-        {/* Label, number and provenance on ONE line. Where the number came
-            from belongs beside the number: a value's provenance in a
-            separate row below it is a provenance nobody reads. */}
-        <div className="a3-pf-value">
-          <dl className="a3-pf-value-figure">
-            <dt>
-              {value.kind === 'amount' && value.coverage === 'subtotal'
-                ? t('portfolio.card.value.subtotal')
-                : t('portfolio.card.value')}
-            </dt>
-            <dd className="numeric" data-unknown={value.kind === 'notCalculated' || undefined}>
-              {value.kind === 'notCalculated'
-                ? t('portfolio.card.value.notCalculated')
-                : `${localizeMoneyText(value.display, language)}${NNBSP}€`}
-            </dd>
-          </dl>
-          {value.kind === 'amount' && (
-            <p className="a3-pf-value-note">
-              {t(value.provenance === 'syntheticPortfolioFixture'
-                ? 'portfolio.card.value.synthetic'
-                : 'portfolio.card.value.fromSnapshot', {
-                date: formatDate(value.asOf, language),
-              })}
-            </p>
-          )}
-        </div>
-
         {/* The demonstration marker rides IN this row, not above it. The
             row already wraps, so one short caption beside two 44 px buttons
             costs zero rows — where the old full-width sentence cost 20 px
@@ -809,16 +706,6 @@ function PortfolioCard({
           >
             {configureLabel}
           </Button>
-          <Button
-            variant="secondary"
-            disabled={!clientReady}
-            disabledReason={clientViewBlockedReason}
-            aria-describedby={blockedBy}
-            aria-label={t('portfolio.card.actionOn', { action: clientViewLabel, name: title })}
-            onClick={clientReady ? (onOpenClientView ?? undefined) : undefined}
-          >
-            {clientViewLabel}
-          </Button>
           {project.displayOnly && (
             <p id={displayOnlyReasonId} className="a3-pf-note">
               {t('portfolio.card.displayOnly')}
@@ -834,47 +721,6 @@ function PortfolioCard({
           stranded at the top — the register's single largest visual
           defect, present on the overdue card too. */}
       <div className="a3-pf-aside">
-        <div className="a3-pf-deadline" data-state={deadline.kind}>
-          <p className="a3-pf-deadline-label">{t('portfolio.card.meeting.label')}</p>
-          {deadline.kind === 'none' ? (
-            <p className="a3-pf-deadline-value" data-none>
-              {t('portfolio.card.meeting.none')}
-            </p>
-          ) : (
-            <>
-              {/* The exact date and time stay in a `<time datetime>` in
-                  EVERY non-empty state. A relative cue is a cue BESIDE the
-                  absolute value; it never replaces it. */}
-              <p className="a3-pf-deadline-value">
-                <time dateTime={deadline.at}>
-                  <span>{meeting!.day}</span>
-                  <span className="a3-pf-deadline-clock">
-                    {t('portfolio.card.meeting.when', {
-                      weekday: meeting!.weekday, time: meeting!.clock,
-                    })}
-                  </span>
-                </time>
-              </p>
-              {deadline.kind === 'overdue' && (
-                <p className="a3-pf-deadline-cue">
-                  <span aria-hidden="true">!</span>
-                  {t('portfolio.card.meeting.overdue')}
-                </p>
-              )}
-              {deadline.kind === 'soon' && (
-                <p className="a3-pf-deadline-cue">
-                  <span aria-hidden="true">→</span>
-                  {deadline.days <= 0
-                    ? t('portfolio.card.meeting.today')
-                    : deadline.days === 1
-                      ? t('portfolio.card.meeting.tomorrow')
-                      : t('portfolio.card.meeting.inDays', { count: deadline.days })}
-                </p>
-              )}
-            </>
-          )}
-        </div>
-
         {/* Both dates kept, both demoted to caption rows — label left,
             value right, 64 px → 32 px. No record is removed; two
             record-keeping dates simply stop outweighing the one fact that
@@ -1029,19 +875,3 @@ function AggregateMetric({
   )
 }
 
-/**
- * The deadline against a clock that ticks.
- *
- * "in 5 days" is a claim about the moment it is read, so the classification
- * is recomputed on mount and once an hour afterwards. A card left open over
- * a lunch break must not still say "tomorrow" about yesterday.
- */
-function useDeadline(iso: string | null): DeadlineState {
-  const [now, setNow] = useState(() => Date.now())
-  const timer = useRef<number>()
-  useEffect(() => {
-    timer.current = window.setInterval(() => setNow(Date.now()), 3_600_000)
-    return () => window.clearInterval(timer.current)
-  }, [])
-  return useMemo(() => deadlineState(iso, now), [iso, now])
-}

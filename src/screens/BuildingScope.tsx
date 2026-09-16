@@ -414,6 +414,19 @@ function IdentityCard({
 
 /* ─────────────────────────────── baseline ────────────────────────────── */
 
+/**
+ * Das Baseline-Blatt ist vorübergehend ausgeblendet (Owner, 16.09.2026).
+ *
+ * Die elf Zeilen wiederholten, was die Gebäudekarte darüber bereits sagt.
+ * Ausgeblendet bleibt NUR die Tabelle samt Kopf: die Bestätigung — und bei
+ * einem Entwurf der Hinweis auf die Folgen — bleibt stehen, weil das
+ * Speicher-Gate genau diese Bestätigung verlangt. Ohne sie wäre `Gebäude-
+ * umfang speichern` für ein frisches Gebäude unerreichbar.
+ *
+ * Auf `true` setzen bringt das Blatt unverändert zurück.
+ */
+const SHOW_BASELINE_SHEET = false
+
 type DraftEdit = {
   key: ScopeFactKey
   value: string
@@ -518,6 +531,51 @@ function Baseline({
       )),
   ]
 
+  const notice = draft ? (
+    <div className="a3-bsp-consequence" role="note">
+      <SemanticStatus tone="attention" label={t('vr3.scope.edit.consequenceTitle')} />
+      <p className="a3-bsp-consequence-detail">{t('vr3.scope.edit.consequenceDetail')}</p>
+    </div>
+  ) : isStale ? (
+    <StaleState>{t('vr3.scope.stale.building', { building: name })}</StaleState>
+  ) : undefined
+
+  const actions = isConfirmed ? (
+    <p className="a3-bsp-confirmed" tabIndex={-1}>
+      <SemanticStatus tone="ok" label={t('vr3.scope.confirmed.label')} />
+      <span className="a3-bsp-confirmed-meta">
+        {t('vr3.scope.confirmed.meta', {
+          actor: confirmation?.actor ?? '',
+          at: (confirmation?.at ?? '').slice(0, 10),
+        })}
+      </span>
+    </p>
+  ) : (
+    <Button
+      variant="primary"
+      onClick={() => {
+        s.confirmScopeBuilding(building.id)
+        onAnnounce(t('vr3.scope.announce.confirmed', { building: name }))
+      }}
+      disabled={Boolean(draft)}
+      disabledReason={draft ? t('vr3.scope.confirm.blockedByEdit') : undefined}
+      aria-label={`${t('vr3.scope.confirm.action')} · ${name}`}
+    >
+      {t('vr3.scope.confirm.action')}
+    </Button>
+  )
+
+  if (!SHOW_BASELINE_SHEET) {
+    return (
+      <div ref={sheetRef}>
+        {/* Die Klasse bleibt: die Wiederherstellung des Gates sucht ihre
+            Schaltfläche genau hier. */}
+        {notice}
+        <div className="a3-bsp-baseline-actions">{actions}</div>
+      </div>
+    )
+  }
+
   return (
     <div ref={sheetRef}>
       <BuildingBaselineSheet
@@ -526,38 +584,8 @@ function Baseline({
           authority: t(overallAuthorityKey(building)),
         })}
         rows={rows}
-        notice={draft ? (
-          <div className="a3-bsp-consequence" role="note">
-            <SemanticStatus tone="attention" label={t('vr3.scope.edit.consequenceTitle')} />
-            <p className="a3-bsp-consequence-detail">{t('vr3.scope.edit.consequenceDetail')}</p>
-          </div>
-        ) : isStale ? (
-          <StaleState>{t('vr3.scope.stale.building', { building: name })}</StaleState>
-        ) : undefined}
-        actions={isConfirmed ? (
-          <p className="a3-bsp-confirmed" tabIndex={-1}>
-            <SemanticStatus tone="ok" label={t('vr3.scope.confirmed.label')} />
-            <span className="a3-bsp-confirmed-meta">
-              {t('vr3.scope.confirmed.meta', {
-                actor: confirmation?.actor ?? '',
-                at: (confirmation?.at ?? '').slice(0, 10),
-              })}
-            </span>
-          </p>
-        ) : (
-          <Button
-            variant="primary"
-            onClick={() => {
-              s.confirmScopeBuilding(building.id)
-              onAnnounce(t('vr3.scope.announce.confirmed', { building: name }))
-            }}
-            disabled={Boolean(draft)}
-            disabledReason={draft ? t('vr3.scope.confirm.blockedByEdit') : undefined}
-            aria-label={`${t('vr3.scope.confirm.action')} · ${name}`}
-          >
-            {t('vr3.scope.confirm.action')}
-          </Button>
-        )}
+        notice={notice}
+        actions={actions}
       />
     </div>
   )

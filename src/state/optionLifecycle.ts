@@ -1,4 +1,9 @@
-import { KG_SCOPE_GROUPS, type KgScopeGroup } from '../engine/kgConfiguration'
+import {
+  KG_DECIDED_SCOPE_GROUPS,
+  KG_SCOPE_GROUPS,
+  type KgScopeGroup,
+} from '../engine/kgConfiguration'
+import { hasV3Surfaces } from '../lib/variantLock'
 import { CONFIGURATOR_STEP, type ConfiguratorStepId } from './chapters'
 import type { PipelineView } from './clientProjection'
 import { buildingScopeStale } from './optionBuildingScope'
@@ -106,7 +111,6 @@ export type OptionStepId =
    * Calculate stay current while it is open.
    */
   | 'verantwortung' | 'alle-kosten' | 'terminplan'
-  | 'finale-pruefung' | 'speichern'
 
 export type OptionDestination = Readonly<{
   stage: OptionStageId
@@ -131,7 +135,13 @@ export const OPTION_STAGE_STEPS: Readonly<Record<OptionStageId, readonly OptionS
     ...KG_SCOPE_GROUPS.map((g) => KG_STEP_ID[g]),
     'verantwortung', 'alle-kosten', 'terminplan',
   ],
-  pruefen: ['finale-pruefung', 'speichern'],
+  /**
+   * NO nested steps (Product Owner, 2026-09-16). The released pair
+   * `finale-pruefung` / `speichern` resolved to ONE surface, so it was a
+   * sequence with a single place in it. Checking and saving happen on the
+   * Prüfen stage itself; the next place is Präsentieren.
+   */
+  pruefen: [],
   praesentieren: [],
 }
 
@@ -169,14 +179,12 @@ const STEP_NAV: Readonly<Record<OptionStepId, OptionNav>> = {
    */
   'alle-kosten': { view: 'kostendetails', step: null },
   terminplan: { view: 'konfigurator', step: CONFIGURATOR_STEP.COMMERCIAL_SCHEDULE },
-  'finale-pruefung': { view: 'konfigurator', step: CONFIGURATOR_STEP.FINAL_VALIDATION },
-  speichern: { view: 'konfigurator', step: CONFIGURATOR_STEP.FINAL_VALIDATION },
 }
 
 const STAGE_NAV: Readonly<Record<OptionStageId, OptionNav>> = {
   konfigurieren: STEP_NAV['gebaeude-umfang'],
   kalkulieren: STEP_NAV.kg200,
-  pruefen: STEP_NAV['finale-pruefung'],
+  pruefen: { view: 'konfigurator', step: CONFIGURATOR_STEP.FINAL_VALIDATION },
   praesentieren: { view: 'praesentieren', step: null },
 }
 
@@ -217,7 +225,7 @@ export function destinationOfNav(
     return { stage: 'kalkulieren', step: 'terminplan' }
   }
   if (step === CONFIGURATOR_STEP.FINAL_VALIDATION) {
-    return { stage: 'pruefen', step: 'finale-pruefung' }
+    return { stage: 'pruefen', step: null }
   }
   const kg = (Object.entries(KG_CHAPTER_STEP) as Array<[KgScopeGroup, ConfiguratorStepId]>)
     .find(([, id]) => id === step)?.[0]
@@ -299,12 +307,14 @@ export function optionLifecycleState(
  * landing on it would present a settled question as an open one.
  */
 function firstOpenKgStep(view: Store): OptionStepId {
-  const open = KG_SCOPE_GROUPS.find((group) => {
+  // Asked groups only — the baseline ones have no step to land on.
+  const open = KG_DECIDED_SCOPE_GROUPS.find((group) => {
     if (view.kgConfig?.scope[group] !== 'included') return false
     return kgChapterProgressFor(view, group)?.state !== 'complete'
   })
-  const included = KG_SCOPE_GROUPS.find((g) => view.kgConfig?.scope[g] === 'included')
-  return KG_STEP_ID[open ?? included ?? 'KG_200']
+  const included = KG_DECIDED_SCOPE_GROUPS
+    .find((g) => view.kgConfig?.scope[g] === 'included')
+  return KG_STEP_ID[open ?? included ?? KG_DECIDED_SCOPE_GROUPS[0]]
 }
 
 /**
@@ -337,10 +347,10 @@ export function optionOpenDestination(
     return { stage: 'kalkulieren', step: 'terminplan' }
   }
   if (view.reviewConfirmation === null) {
-    return { stage: 'pruefen', step: 'finale-pruefung' }
+    return { stage: 'pruefen', step: null }
   }
   if (saveStageOf(s, optionId, view) !== 'SAVED') {
-    return { stage: 'pruefen', step: 'speichern' }
+    return { stage: 'pruefen', step: null }
   }
   // A SAVED Option whose client projection is invalid or was validated
   // against an older contract has no reachable Präsentieren: the stage is
@@ -348,7 +358,7 @@ export function optionOpenDestination(
   // produced the baseline (state matrix B9). The function stays total and
   // never returns a stage the gates refuse.
   if (clientModeLockReason(s, optionId) !== null) {
-    return { stage: 'pruefen', step: 'finale-pruefung' }
+    return { stage: 'pruefen', step: null }
   }
   return { stage: 'praesentieren', step: null }
 }
@@ -379,22 +389,43 @@ export function optionLastChangedAt(s: Store, optionId: string): string | null {
 export type OrderedOption = Readonly<{
   id: string
   name: string
+  /** The first Option of the project: the variant the others depart from. */
+  isBase: boolean
   state: OptionLifecycleState | null
   destination: OptionDestination | null
   lastChangedAt: string | null
 }>
 
+/* Naming lives in its own module — see `optionNaming` for why — and is
+   re-exported here so every existing reader keeps one import. */
+export {
+  BASE_OPTION_AUTO_NAME, isAutoBaseName, optionDisplayName,
+} from './optionNaming'
+
+/**
+ * The list order.
+ *
+ * `v3` reads the collection as a BASE and its departures: the first Option
+ * stays at the top, every later one follows in the order it was created, so
+ * a new variant appears at the bottom and nothing above it moves.
+ *
+ * `v1`/`v2` keep the order they shipped with — incomplete first, most
+ * recently touched above the rest. The variants are compared side by side in
+ * testing, and silently changing the two that were not asked about would
+ * destroy exactly what the comparison is for.
+ */
 export function orderedOptions(s: Store): OrderedOption[] {
   const rows = s.options.map((option, index) => ({
     option,
     index,
+    isBase: index === 0,
     state: optionLifecycleState(s, option.id),
     destination: optionOpenDestination(s, option.id),
     lastChangedAt: optionLastChangedAt(s, option.id),
   }))
-  return rows
-    .slice()
-    .sort((a, b) => {
+  const ordered = hasV3Surfaces(s.navVariant)
+    ? rows
+    : rows.slice().sort((a, b) => {
       const finishedA = optionIsFinished(a.state) ? 1 : 0
       const finishedB = optionIsFinished(b.state) ? 1 : 0
       if (finishedA !== finishedB) return finishedA - finishedB
@@ -403,13 +434,14 @@ export function orderedOptions(s: Store): OrderedOption[] {
       if (changedA !== changedB) return changedA < changedB ? 1 : -1
       return b.index - a.index
     })
-    .map(({ option, state, destination, lastChangedAt }) => ({
-      id: option.id,
-      name: option.name,
-      state,
-      destination,
-      lastChangedAt,
-    }))
+  return ordered.map(({ option, isBase, state, destination, lastChangedAt }) => ({
+    id: option.id,
+    name: option.name,
+    isBase,
+    state,
+    destination,
+    lastChangedAt,
+  }))
 }
 
 /**

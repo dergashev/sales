@@ -1,10 +1,12 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { hasV3Surfaces } from '../lib/variantLock'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { Decimal } from 'decimal.js'
 import {
-  activeBuilding, commercialSnapshot, includedBuildingIds, kgCatalogueFor,
+  commercialSnapshot, includedBuildingIds, kgCatalogueFor,
   projectProjection, translatedChangeLabel, useStore,
+  bauzeitResultFor,
 } from '../state/store'
 import { optionCommercialProjection } from '../state/optionCommercialProjection'
 import type { PriceChange } from '../state/store'
@@ -12,13 +14,14 @@ import { effectiveFactValue } from '../state/buildingReview'
 import {
   commercialComposition,
   commercialCompleteness,
-  railCompositionRows,
+  railCompositionSplit,
   selectedCommercialEffects,
   type SelectedCommercialEffect,
 } from '../state/commercialProjection'
+import { KG_DECIDED_SCOPE_GROUPS } from '../engine/kgConfiguration'
 import derivedFx from '../fixtures/derived-prototype.json'
 import {
-  NNBSP, present, formatDE, label as moneyLabel,
+  NNBSP, present, label as moneyLabel,
 } from '../engine/money'
 import type { CostGroup } from '../engine/calculate'
 import { isScopeUniverseEmpty } from '../engine/calculate'
@@ -26,9 +29,8 @@ import { translatedDriverLabel } from '../state/clientProjection'
 import { CONFIGURATOR_STEP } from '../state/chapters'
 import { optionNav } from '../state/optionLifecycle'
 import { Button } from './primitives'
-import { OriginPopover } from './OriginPopover'
 import { DataStateBlock, PartialState } from './DataStates'
-import { EstimateUncertaintyBadge } from './EstimateUncertaintyBadge'
+import { useLocalNumber } from '../lib/localNumber'
 import { useT, useTx, localizeMoneyText, localizePercentText } from '../i18n'
 import type { UiLanguage } from '../i18n'
 import { useSemanticMotion } from '../design-system/motion'
@@ -309,12 +311,35 @@ export function OfferPanel(
   const amountHeadingId = useId()
   const effectsHeadingId = useId()
   const compositionHeadingId = useId()
-  const completenessHeadingId = useId()
+
+  const num = useLocalNumber()
+  /**
+   * THE RAIL'S BAUZEIT UNDER `v3` — the Terminplan the user is actually
+   * looking at, not the released fixture window.
+   *
+   * The released fact is a FIXTURE building-execution window (`≈ 7,5 Monate ·
+   * Fertigstellung 28.01.2028`, `proposalDuration`), and `v3`'s schedule
+   * stage computes the whole project from the ported phase model (`16,5
+   * Monate`, planning included). Two answers to one question stood on one
+   * screen, and the rail's was the one a seller quotes.
+   *
+   * It is the DISPLAY that is redirected, nothing else: `p.duration` still
+   * feeds the client proposal, the comparison and the export, which read the
+   * released schedule. That split is the honest description of a prototype
+   * whose new schedule engine is not yet the source for the offer artefacts
+   * — it is a stopgap and it is meant to disappear when `v3` becomes the
+   * schedule, not a second permanent model.
+   */
+  const bauzeit = hasV3Surfaces(s.navVariant) ? bauzeitResultFor(s) : null
 
   const buildingIds = includedBuildingIds(s)
   const completeness = commercialCompleteness(commercial)
   const composition = commercialComposition(commercial)
-  const compositionRows = railCompositionRows(composition)
+  /* Only the three groups this pipeline asks about get a row; the rest of
+     the baseline cost is one collapsed line, so the table still reconciles
+     with its own subtotal (rule 32). */
+  const { decided: compositionRows, rest: baselineRest } =
+    railCompositionSplit(composition, KG_DECIDED_SCOPE_GROUPS)
   const effects = useMemo(
     // Ranking recomputes only when the committed commercial state moves:
     // `version` increments exactly on a settled change that moved the total.
@@ -378,8 +403,6 @@ export function OfferPanel(
     }
     previousAmounts.current = next
   })
-
-  const blocked = !activeBuilding(s).gebaeudeklasse.confirmed
 
   const { ref: bandRef, level: degradeLevel } = useBandDegradeLadder([
     priceUnavailable, scopeEmpty, s.mode, p.result.total.display,
@@ -483,85 +506,105 @@ export function OfferPanel(
               </p>
             )}
 
-            {/* THE PERSISTENT COMMERCIAL BASIS. Uncertainty, net/gross and
-                the one provenance affordance, and they NEVER go away: a
-                transient message that borrows this line takes a permanent
-                commercial fact off the screen for its own four seconds, and
-                the fact is the one the reader is quoting from. */}
-            <div className="a3-cockpit-basis">
-              {!priceUnavailable && (
-                <p>
-                  <EstimateUncertaintyBadge
-                    language={lang}
-                    presentation="inline"
-                    pp={p.uncertaintyPp}
-                  />
-                  {' · '}{t('money.net')}
-                  {degradeLevel < 1 && (<>
-                    {' · '}
-                    <OriginPopover
-                      triggerLabel={t('commercial.basis.origin')}
-                      rows={[
-                        {
-                          label: t('origin.exactValue'),
-                          value: `${localizeMoneyText(formatDE(p.result.total.exact, 2), lang)}${NNBSP}€`,
-                          strong: true,
-                        },
-                        {
-                          label: t('origin.denominator', {
-                            denominator: p.leadRate.denominatorLabel,
-                          }),
-                          value: `${localizeMoneyText(formatDE(p.leadRate.denominator, 2), lang)}${NNBSP}m²`,
-                        },
-                        ...(!commercial.regionalFactor.active
-                          ? [{
-                            label: t('driver.regionalFactor'),
-                            value: t('panel.regionalFactorDeactivated'),
-                            muted: true,
-                          }]
-                          : []),
-                      ]}
-                      rounding={p.result.total.disclosure}
-                      runRef={s.mode === 'intern'
-                        ? 'Regelsatz RS-2026.2 · DEMO-SC-01 · DEMO-RUN-0007 · authoritative · 04.08.2026'
-                        : null}
-                      accessibleName={`${t('common.showOrigin')} · ${tx(p.result.totalLabel)}`}
-                    />
-                  </>)}
-                </p>
-              )}
-            </div>
+            {/* CONFIDENCE · HIGH · ± 10–12 % — the owner's design, asked
+                for verbatim and reaffirmed after the objection below, in the
+                slot the retired `± 5 % · netto · Herkunft` line held. Same
+                reserved height, so nothing under it moves (rule 24). No
+                trigger and no link: it is a readout.
 
-            {/* Commercial completeness, immediately below the amount, in a
-                FIXED slot with all three counts always present. One canonical
-                selector; the rail keeps no counter of its own. */}
-            {!scopeEmpty && (<>
-              {/* A real heading, so the completeness statement is reachable
-                  from a heading list (§13.1) — visually hidden, because the
-                  line it names is one caption long and the amount directly
-                  above it already carries the visible label. */}
-              <h3 id={completenessHeadingId} className="a3-visually-hidden">
-                {t('commercial.completeness.heading')}
-              </h3>
-              <p
-                className="a3-cockpit-complete"
-                aria-labelledby={completenessHeadingId}
-                data-settled={completeness.settled}
-              >
-                {t('commercial.completeness.line', {
-                  included: completeness.includedGroups,
-                  total: completeness.decidableGroups,
-                  excluded: completeness.excludedGroups,
-                  open: completeness.undecidedGroups + completeness.openDecisions,
-                })}
-              </p>
-            </>)}
+                BOTH VALUES ARE MOCKED, deliberately and visibly here rather
+                than quietly in a fixture. `confidence` is not a quantity this
+                product computes, and as a FIELD it is forbidden:
+                `data-model.md` calls a single confidence grade the SOURCE-001
+                blocker and models six independent axes instead, and the
+                glossary forbids translating `Schätzunsicherheit` as
+                "confidence". The interval is likewise not the calculated one
+                (`p.uncertaintyPp`, ± 5 % for this fixture). Nothing reads
+                these two strings — no calculation, no artefact, no export —
+                so the mock stays a mock; when a real measure exists, this is
+                the one place to replace.
+
+                The word carries the state and the colour only repeats it
+                (rule 8), so it survives grayscale; a rectangle with an accent
+                edge, never a pill (rule 4).
+
+                WHAT LEFT WITH THE OLD LINE, stated rather than discovered
+                later: it held the workspace's only Herkunft-Popover for the
+                total, and rule 40 asks the deactivated Regionalfaktor to
+                appear there as well as in the Kostentreiber. The Kostentreiber
+                row still carries it; the popover half of that rule has no
+                surface in the rail until the affordance is re-homed. */}
+            {!priceUnavailable && (
+              <div className="a3-cockpit-quality">
+                <p className="a3-cockpit-quality-k">{t('offerPanel.basis.title')}</p>
+                <p className="a3-cockpit-quality-v">
+                  <span className="a3-cockpit-quality-level">
+                    {t('offerPanel.basis.level')}
+                  </span>
+                  <span className="numeric">
+                    {localizePercentText(`±${NNBSP}10–12${NNBSP}%`, lang)}
+                  </span>
+                </p>
+              </div>
+            )}
+
             {/* THE CHANGE-FEEDBACK REGION — PRE-RESERVED, so it is empty and
                 silent most of the time and costs the same height either way.
                 A committed change renders here for four seconds, names its
                 reference, and expires without a second wave: the box it
                 leaves behind is the box it arrived in. */}
             <div className="a3-cockpit-changeslot">
+              {/* GEIST-VORSCHAU LIVES IN THE BOX THAT IS ALREADY RESERVED.
+                  It used to hang in the zero-height overlay anchor below the
+                  pinned band, which was right while Level 2 underneath was a
+                  single expandable list: the overlay covered it whole. The
+                  cockpit's Level 2 is the secondary facts — three rows of
+                  24/24/48 px — and a 40 px opaque overlay starting 12 px
+                  into them cut the first rate's ascenders off above itself
+                  and the second rate in half below: two mutilated lines
+                  around a floating sentence, which is what «broken and
+                  overlapping» means.
+                  The chip's box next door was reserved for exactly this
+                  kind of feedback, so the preview takes that box too and
+                  still shifts no layout (rule 24): the reservation is the
+                  one that was already there, which is also what SB-02
+                  forbade ADDING, not what it forbade using.
+                  BOTH are therefore rendered unconditionally and share one
+                  grid cell — the ORDER between them is a layer, not a
+                  render condition. The result of a committed click sits on
+                  top and the hover hypothesis below it (tokens
+                  `--layer-change-result` > `--layer-change-preview`,
+                  components.css). Reason: the reader's mouse travels to the
+                  NEXT option the moment it clicked, and under the previous
+                  priority (preview > chip) that travel both covered and
+                  extinguished a result nobody had finished reading. The
+                  chip keeps its own four-second life (DC-2) and the preview
+                  keeps its 200 ms intent delay and secondary colour
+                  (DC-28); only who occludes whom changed.
+                  intern-only at the RENDER, not only at the setter: a mode
+                  switch with a preview open must not leave a hypothetical
+                  price beside the real one in the client's view. */}
+              {s.mode === 'intern' && (
+                <p
+                  className={'a3-preview numeric' + (s.preview ? ' a3-show' : '')}
+                  aria-hidden={s.preview ? undefined : true}
+                >
+                  {shownPreview && (<>
+                    <span className="a3-preview-line">
+                      {tx('Vorschau')} · {translatedChangeLabel(shownPreview.change, t, tx, lang)}
+                    </span>
+                    <span className="a3-preview-line">
+                      {shownPreview.futureTotal.prefix && (
+                        <span aria-hidden="true">{shownPreview.futureTotal.prefix}{NNBSP}</span>
+                      )}
+                      {localizeMoneyText(shownPreview.futureTotal.display, lang)}{NNBSP}€
+                      {' · '}
+                      {signedOut(shownPreview.deltaExact, lang)}
+                      {NNBSP}{t('offerPanel.preview.vsCurrent')}
+                    </span>
+                  </>)}
+                </p>
+              )}
               {changeActive && shownDelta && (
                 <p
                   className="a3-cockpit-change"
@@ -580,35 +623,6 @@ export function OfferPanel(
               )}
             </div>
           </>)}
-        </div>
-
-        {/* Geist-Vorschau keeps its released lifecycle verbatim, in the
-            zero-height overlay anchor: a PREVIEW is not a committed fact and
-            must never enter the persistent basket or the flow. */}
-        <div className="a3-change-slot-anchor">
-          {s.mode === 'intern' && (
-            <div className="a3-preview-slot">
-              <p
-                className={'a3-preview numeric' + (s.preview ? ' a3-show' : '')}
-                aria-hidden={s.preview ? undefined : true}
-              >
-                {shownPreview && (<>
-                  <span className="a3-preview-line">
-                    {tx('Vorschau')} · {translatedChangeLabel(shownPreview.change, t, tx, lang)}
-                  </span>
-                  <span className="a3-preview-line">
-                    {shownPreview.futureTotal.prefix && (
-                      <span aria-hidden="true">{shownPreview.futureTotal.prefix}{NNBSP}</span>
-                    )}
-                    {localizeMoneyText(shownPreview.futureTotal.display, lang)}{NNBSP}€
-                    {' · '}
-                    {signedOut(shownPreview.deltaExact, lang)}
-                    {NNBSP}{t('offerPanel.preview.vsCurrent')}
-                  </span>
-                </>)}
-              </p>
-            </div>
-          )}
         </div>
       </div>
 
@@ -668,14 +682,20 @@ export function OfferPanel(
           ))}
           <div className="a3-cockpit-fact">
             <span className="a3-cockpit-fact-v">
-              {p.duration.prefix && (
-                <span aria-hidden="true">{p.duration.prefix}{NNBSP}</span>
-              )}
-              {localizeMoneyText(p.duration.display.replace(`${NNBSP}Monate`, ''), lang)}
+              <span aria-hidden="true">{'≈'}{NNBSP}</span>
+              {bauzeit
+                ? num(bauzeit.projectMonthsRounded,
+                  bauzeit.projectMonthsRounded % 1 === 0 ? 0 : 1)
+                : localizeMoneyText(
+                  p.duration.display.replace(`${NNBSP}Monate`, ''), lang,
+                )}
               {NNBSP}{t('offerPanel.duration.unit')}
               <span className="a3-cockpit-fact-k">
                 {t('schedule.completionFromOkbp', {
-                  date: formatDate(p.duration.completionDate, lang),
+                  date: formatDate(
+                    bauzeit ? bauzeit.projectEndDate : p.duration.completionDate,
+                    lang,
+                  ),
                 })}
               </span>
             </span>
@@ -818,6 +838,19 @@ export function OfferPanel(
                   )}
                 </tr>
               ))}
+              {baselineRest ? (
+                <tr>
+                  <th scope="row">{t('commercial.din.baselineRest')}</th>
+                  <td className="a3-cockpit-num">
+                    {moneyOut(present(baselineRest.exact), lang)}
+                  </td>
+                  <td className="a3-cockpit-share">
+                    {baselineRest.sharePercent === null
+                      ? ''
+                      : percentOut(baselineRest.sharePercent, lang)}
+                  </td>
+                </tr>
+              ) : null}
               <tr className="a3-cockpit-kg-total">
                 <th scope="row">{tx(composition.totalLabel)}</th>
                 <td className="a3-cockpit-num" colSpan={2}>
@@ -849,24 +882,6 @@ export function OfferPanel(
           </button>
         </div>
 
-        {/* A persistent gate, not transient feedback: it appears only while
-            the building classification is unconfirmed and states its own next
-            step (DC-33). It never animates and never expires. */}
-        {s.mode === 'intern' && blocked && (
-          <div className="a3-cockpit-footer">
-            <div className="a3-warn-prep">
-              <p className="text-small text-text-primary">
-                <span aria-hidden="true">▲ </span>
-                {t('offer.gate.blocked')}
-              </p>
-              <div className="mt-2">
-                <Button variant="primary" onClick={() => s.confirmGebaeudeklasse()}>
-                  {t('offer.gate.confirmClassification')}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
       </>)}
       {footer}
     </aside>

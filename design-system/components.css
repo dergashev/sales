@@ -450,9 +450,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    for when it is ADDED. Both durations already collapse to 0ms under
    `prefers-reduced-motion` via the token, no separate reduced-motion rule
    needed here. */
-.a3-preview-slot>.a3-preview{display:block;max-width:100%;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight);color:var(--color-text-secondary);opacity:0;transition:opacity var(--motion-duration-fast) var(--motion-easing-standard)}
+/* The ghost's own appearance belongs to the ghost, not to the box it is
+   put in: the selector was `.a3-preview-slot > .a3-preview`, so a preview
+   rendered anywhere else — e.g. in the cockpit's reserved change box —
+   started at full opacity and never obeyed `.a3-show`. */
+.a3-preview{display:block;max-width:100%;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--type-body-weight);color:var(--color-text-secondary);opacity:0;transition:opacity var(--motion-duration-fast) var(--motion-easing-standard)}
 .a3-preview-line{display:block}
-.a3-preview-slot>.a3-preview.a3-show{opacity:1;transition:opacity var(--motion-reveal) var(--motion-easing-standard) var(--motion-delay-hover-preview)}
+.a3-preview.a3-show{opacity:1;transition:opacity var(--motion-reveal) var(--motion-easing-standard) var(--motion-delay-hover-preview)}
 /* SIDEBAR 01 (backlog eda1e221, SB-02) - `min-height` reservation is correct
    for a SCROLLING region (rule 24: appearance must not shift layout) and
    wrong for a PINNED one: while sticky, the two slots' worst-case height
@@ -570,6 +574,9 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-comparison-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-3) var(--space-4);flex-wrap:wrap}
 .a3-comparison-context{flex:1 1 16rem;min-width:0}
 .a3-comparison-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-2) var(--space-4);flex:0 0 auto}
+/* With the head's reading hint gone, the toolbar is the head: it starts
+   at the page's own left edge instead of hanging off the right. */
+.a3-comparison-toolbar[data-align="start"]{flex:1 1 100%;justify-content:flex-start}
 .a3-comparison-toolbar-group{display:flex;align-items:center;gap:var(--space-2);flex-wrap:wrap}
 .a3-comparison-scroll{max-inline-size:100%;overflow-x:auto;overscroll-behavior-inline:contain;outline-offset:var(--space-1)}
 .a3-comparison-scroll>.a3-cmp{inline-size:max-content;min-inline-size:100%}
@@ -1142,7 +1149,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-toast[role=status] > text + button.a3-act; .a3-modal-scrim >
    .a3-modal[role=dialog] > .a3-item/.a3-hidelist/actions.
    Classes: .a3-toasts · .a3-toast · .a3-show · .a3-act · .a3-modal-scrim · .a3-modal · .a3-item · .a3-okc · .a3-warnc · .a3-hidelist. */
-.a3-toasts{position:fixed;left:var(--space-5);bottom:var(--space-5);z-index:var(--layer-toast);display:flex;flex-direction:column;gap:var(--space-2);width:min(var(--size-toast-max-width),calc(100vw - 2 * var(--gutter-narrow)));pointer-events:none}
+.a3-toasts{position:fixed;right:var(--space-5);bottom:var(--space-5);align-items:flex-end;z-index:var(--layer-toast);display:flex;flex-direction:column;gap:var(--space-2);width:min(var(--size-toast-max-width),calc(100vw - 2 * var(--gutter-narrow)));pointer-events:none}
 .a3-toast{background:var(--color-surface-default);border:var(--border-contrast-1px);border-left:var(--size-status-accent-width) solid var(--color-text-primary);padding:var(--space-3) var(--space-4);display:flex;gap:var(--space-4);align-items:center;font-size:var(--type-small-size);line-height:var(--type-small-line);opacity:0;transform:translateY(var(--enter-shift));transition:opacity var(--motion-reveal) var(--motion-easing-standard),transform var(--motion-reveal) var(--motion-easing-standard)}
 .a3-toast:not(.a3-show){pointer-events:none}
 .a3-toast.a3-show{opacity:1;transform:none;pointer-events:auto}
@@ -1154,6 +1161,16 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-modal .a3-item{display:flex;gap:var(--space-2);align-items:baseline;padding:var(--space-1) 0;font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .a3-modal .a3-okc{width:var(--size-status-icon);height:var(--size-status-icon);border-radius:50%;background:var(--color-dataviz-category-2);color:var(--color-surface-default);font-size:var(--size-status-glyph);display:inline-flex;align-items:center;justify-content:center;flex:none;align-self:center}
 .a3-modal .a3-warnc{width:var(--size-status-icon);height:var(--size-status-icon);border-radius:50%;background:var(--color-status-warning);color:var(--color-text-inverse);font-size:var(--size-status-glyph);display:inline-flex;align-items:center;justify-content:center;flex:none;align-self:center}
+/* The readiness panel's own width — see `--panel-right-width-readiness`.
+   Classes: .a3-modeready */
+.a3-modeready{inline-size:var(--panel-right-width-readiness);max-inline-size:var(--panel-right-width-readiness)}
+
+/* The header's reset trigger: a glyph target the size of the hit area, in
+   the same quiet register as the language control beside it.
+   Classes: .a3-reset */
+.a3-reset{position:relative;flex:none;display:inline-flex;align-items:center;justify-content:center;inline-size:var(--size-hit-target-default);block-size:var(--size-hit-target-default);padding:0;background:transparent;border:0;color:var(--color-text-secondary);cursor:pointer}
+.a3-reset:hover{color:var(--color-text-primary);background:var(--color-surface-subtle)}
+.a3-reset:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:calc(var(--border-width-focus) * -1)}
 .a3-modal .a3-hidelist{border-left:var(--border-width-strong) solid var(--color-status-warning);background:var(--color-surface-subtle);padding:var(--space-2) var(--space-3);font-size:var(--type-small-size);line-height:var(--type-small-line);margin:var(--space-4) 0}
 
 /* DC-39 / DC-40 · type and option tiles. Structure: .a3-tgrid > button.a3-tk
@@ -1357,6 +1374,12 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-radio-segments label:last-child{border-right:0}
 .a3-radio-segments label:has(input:checked){background:var(--color-surface-selected);box-shadow:inset 0 calc(-1 * var(--border-width-strong)) 0 var(--color-selection-border)}
 .a3-radio-segments input{accent-color:var(--color-selection-border)}
+/* Подпись сегмента и её квалификатор — две строки одного столбца: значение
+   держит свой кегль и вес, квалификатор уходит на caption и во вторичный
+   цвет. Ширины не фиксированы (правило 36): длинный перевод переносится
+   внутри сегмента. */
+.a3-segment-text{display:grid;gap:0;min-width:0;text-align:start}
+.a3-segment-detail{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-regular);letter-spacing:normal;text-transform:none;color:var(--color-text-secondary)}
 .a3-profile-indicator{border-left:var(--border-contrast-2px);padding:var(--space-3) var(--space-4);margin-top:var(--space-4);font-size:var(--type-badge-status-size);line-height:var(--type-badge-status-line);font-weight:var(--type-badge-status-weight)}
 /* DataStateBlock primitive. Structure: .a3-data-state plus one or more
    explicit state modifiers; content names the state and its consequence.
@@ -1439,7 +1462,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-output-blocked-reason+.a3-mode-indicator{grid-column:2}
 .a3-mode-indicator{display:flex;align-items:center;gap:var(--space-2);margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);color:var(--color-text-secondary)}
 .mode-praesentation .a3-mode-indicator{color:var(--color-text-primary)}
-.a3-global-header{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--space-3);padding:var(--space-2) var(--space-5);border-bottom:var(--border-contrast-1px);background:var(--color-surface-default)}
+.a3-global-header{display:grid;block-size:var(--size-global-header-height);grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--space-3);padding:var(--space-2) var(--space-5);border-bottom:var(--border-contrast-1px);background:var(--color-surface-default)}
 .a3-header-controls{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:var(--space-3)}
 /* VR2-01 (ACCEPT-01): schlanke Kopfzeile wie im Ziel. Der „Sprache"-Legend
    stapelte die Sprachumschaltung zweizeilig (~91px) — visuell ausgeblendet
@@ -2291,7 +2314,10 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-config-work-rail .a3-kg td{padding-left:var(--space-1);padding-right:var(--space-1)}
 .a3-config-work-rail .a3-kg td:first-child{overflow-wrap:normal;hyphens:auto}
 .a3-config-work-rail .a3-kg .a3-num{font-size:var(--type-caption-size);line-height:var(--type-caption-line)}
-.a3-config-work{min-width:0;padding:var(--space-5) var(--space-7)}
+/* No side padding of its own: the Option workspace around it already sets
+   the working measure and its gutters, and a second inset inside that one
+   pushed every configurator page in from an edge nothing else respected. */
+.a3-config-work{min-width:0;padding-block:var(--space-5)}
 .a3-config-header{margin:0 0 var(--space-4);align-items:flex-start}
 .a3-config-header .a3-meta{order:-1;flex-basis:100%;color:var(--color-text-secondary);font-size:var(--type-caption-size);font-weight:700;letter-spacing:.04em;line-height:var(--type-caption-line);text-align:left;text-transform:uppercase}
 .a3-config-header .a3-hero-title{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line)}
@@ -2315,7 +2341,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-config-kg300-primary .a3-config-decision-heading h2{white-space:nowrap}
 .a3-config-kg300-primary-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-3);align-items:stretch}
 /* The basement is owned by Building & Scope.  Keeping its read-only summary
-   beside the live façade choices created a third competing column and made
+   beside the live facade choices created a third competing column and made
    the first Configurator scan materially unlike the approved work stage. */
 .a3-config-kg300-basement{display:none}
 .a3-config-kg300-basement .a3-meta{margin:0;color:var(--color-text-secondary);font-size:var(--type-caption-size);font-weight:700;letter-spacing:.04em;text-transform:uppercase}
@@ -2380,7 +2406,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-config-kg700-impact{background:var(--color-surface-stage-deep);color:var(--color-surface-default);padding:var(--space-4)}.a3-config-kg700-impact .a3-cap{color:var(--color-surface-subtle)}.a3-config-kg700-impact .text-text-primary{color:var(--color-surface-default)}
 .a3-config-action-dock{position:sticky;bottom:0;z-index:2;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-3);margin-top:var(--space-5);padding:var(--space-3) var(--space-4);background:var(--color-surface-default);border-top:var(--border-default)}
 .a3-config-sidebar .a3-wfs-chapter .a3-wfs-current,.a3-config-sidebar .a3-wfs-chapter .a3-wfs-cur{background:var(--color-surface-stage)}.a3-config-sidebar .a3-wfs-chapter .a3-wfs-button,.a3-config-sidebar .a3-wfs-chapter .a3-wfs-static{padding-top:var(--space-3);padding-bottom:var(--space-3)}
-@media (max-width:1439px){.a3-config-work{padding-left:var(--space-5);padding-right:var(--space-5)}.a3-config-kg300-stage{grid-template-columns:minmax(0,1fr) 17rem;gap:var(--space-4)}.a3-config-kg300-context{padding-left:var(--space-3)}.a3-config-option-list{gap:var(--space-3)}.a3-config-kg300-guidance{grid-template-columns:minmax(0,1fr) 17rem;gap:var(--space-4)}.a3-config-kg700-decision,.a3-config-kg700-result-grid{grid-template-columns:minmax(0,1fr) 14rem;gap:var(--space-3)}}
+@media (max-width:1439px){.a3-config-kg300-stage{grid-template-columns:minmax(0,1fr) 17rem;gap:var(--space-4)}.a3-config-kg300-context{padding-left:var(--space-3)}.a3-config-option-list{gap:var(--space-3)}.a3-config-kg300-guidance{grid-template-columns:minmax(0,1fr) 17rem;gap:var(--space-4)}.a3-config-kg700-decision,.a3-config-kg700-result-grid{grid-template-columns:minmax(0,1fr) 14rem;gap:var(--space-3)}}
 @media (max-width:1100px){.a3-config-kg300-stage{grid-template-columns:1fr}.a3-config-kg300-primary-grid{grid-template-columns:1fr}.a3-config-kg300-context{grid-template-columns:repeat(2,minmax(0,1fr));border-left:0;border-top:var(--border-default);padding:var(--space-4) 0 0}}
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -2407,10 +2433,10 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    part of the released contract ("a state the user cannot explain is a
    state they cannot act on"), so the container has to let it onto its own
    line. */
-.a3-sst{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2);font-size:var(--type-badge-status-size);line-height:var(--type-badge-status-line);font-weight:var(--font-weight-bold);letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-primary)}
+.a3-sst{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2);text-align:start;font-size:var(--type-badge-status-size);line-height:var(--type-badge-status-line);font-weight:var(--font-weight-bold);letter-spacing:.06em;text-transform:uppercase;color:var(--color-text-primary)}
 .a3-sst-compact{font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);letter-spacing:.04em}
 .a3-sst-glyph{flex:none;width:var(--size-status-glyph);text-align:center;font-weight:var(--font-weight-bold)}
-.a3-sst-label{min-width:0}
+.a3-sst-label{min-width:0;flex:1 1 0}
 .a3-sst-reason{flex-basis:100%;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-regular);letter-spacing:normal;text-transform:none;color:var(--color-text-secondary)}
 .a3-sst-neutral{color:var(--color-text-secondary)}
 .a3-sst-progress{color:var(--color-status-info)}
@@ -2425,7 +2451,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    override and freshness lines. The value and its authority are one
    element on purpose: nothing may render one without the other.
    Classes: .a3-aut · .a3-aut-inline · .a3-aut-stacked · .a3-aut-value ·
-   .a3-aut-meta · .a3-aut-evidence · .a3-aut-confirmation ·
+   .a3-aut-meta · .a3-aut-evidence · .a3-aut-evidence-link · .a3-aut-confirmation ·
    .a3-aut-override · .a3-aut-freshness · one class per authority. */
 .a3-aut{display:inline-grid;gap:var(--space-1);min-width:0}
 .a3-aut-inline{grid-template-columns:minmax(0,max-content)}
@@ -2433,6 +2459,14 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-aut-value{display:flex;align-items:baseline;gap:var(--space-2);font-variant-numeric:tabular-nums}
 .a3-aut-meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 .a3-aut-evidence,.a3-aut-confirmation,.a3-aut-override,.a3-aut-freshness{min-width:0;overflow-wrap:break-word}
+/* The citation IS the control: the file name opens the document, underlined
+   so the affordance does not depend on colour (rule 8's habit), inheriting
+   the caption's size and colour so the row keeps one voice. The version and
+   the issue date beside it stay text — they describe the file, they do not
+   open it. `.hit-target` supplies the 44 × 44 press area without touching
+   the line box. */
+.a3-aut-evidence-link{appearance:none;background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset)}
+.a3-aut-evidence-link:hover{text-decoration-thickness:var(--border-width-strong)}
 .a3-aut-freshness{color:var(--color-status-warning);font-weight:var(--font-weight-medium)}
 .a3-aut-override{color:var(--color-text-primary)}
 /* Left accent per authority: a second, non-colour-dependent marker channel
@@ -2511,35 +2545,47 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-drow-compact · .a3-drow-main · .a3-drow-kind ·
    .a3-drow-identity · .a3-drow-file · .a3-drow-meta · .a3-drow-note ·
    .a3-drow-lineage · .a3-drow-progress · .a3-drow-meter ·
-   .a3-drow-meter-fill · .a3-drow-state · .a3-drow-inspect ·
+   .a3-drow-meter-fill · .a3-drow-state · .a3-drow-file-link ·
    .a3-drow-actions · .a3-drow-action · .a3-drow-action-primary ·
-   .a3-drow-action-ghost · .a3-drow-action-inspect ·
+   .a3-drow-action-ghost ·
    .a3-drow-quiet-state · .a3-drow-detail. */
 .a3-drow{border-top:var(--border-hairline);padding:var(--space-3) 0;min-width:0}
 .a3-drow:last-child{border-bottom:var(--border-hairline)}
-.a3-drow-main{display:grid;grid-template-columns:5ch minmax(0,1fr) minmax(0,var(--measure-band)) minmax(0,max-content) max-content;align-items:start;gap:var(--space-3)}
-.a3-drow-inspect{align-self:center;justify-self:end}
+.a3-drow-main{display:grid;grid-template-columns:5ch minmax(0,1fr) minmax(0,max-content) var(--measure-register-state);align-items:start;gap:var(--space-3)}
 .a3-drow-kind{font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold);color:var(--color-text-secondary);border:var(--border-hairline);padding:var(--space-1);text-align:center}
 .a3-drow-identity{display:grid;gap:var(--space-1);min-width:0}
 .a3-drow-file{font-size:var(--type-table-body-size);line-height:var(--type-table-body-line);font-weight:var(--font-weight-bold);overflow-wrap:break-word;hyphens:auto}
+/* The file name IS the disclosure: underlined because it opens something,
+   and left-aligned in its own column so the register reads as a list of
+   documents rather than a list of buttons. */
+.a3-drow-file-link{appearance:none;background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:start;justify-self:start;cursor:pointer;text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset)}
+.a3-drow-file-link:hover{text-decoration-thickness:var(--border-width-strong)}
 .a3-drow-meta,.a3-drow-note,.a3-drow-lineage{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
 .a3-drow-note{color:var(--color-text-primary)}
 .a3-drow-lineage{color:var(--color-text-muted)}
 .a3-drow-progress{align-self:center;min-width:0}
-.a3-drow-meter{display:block;height:var(--border-width-strong);background:var(--color-surface-subtle);border:0}
+/* The bar reserves its width only while there is work in flight: an empty
+   progress column would otherwise hold a band of air that the file name
+   needs, and the name would hyphenate beside it. */
+.a3-drow-meter{display:block;inline-size:var(--measure-showcase-narrow);height:var(--border-width-strong);background:var(--color-surface-subtle);border:0}
 .a3-drow-meter-fill{display:block;height:100%;background:var(--color-brand-accent);transition:inline-size var(--motion-feedback) var(--motion-easing-standard)}
-.a3-drow-state{justify-self:end;text-align:right;min-width:0}
+/* Der Status ist eine SPALTE, kein Anhang an die letzte. Rechtsbündig
+   begann jede Marke an einer anderen Stelle — das Wort lief mit der Länge
+   seines Grundes mit — und klebte zugleich an der Spalte daneben. Jetzt
+   beginnt jeder Zustand an derselben Kante, und der Abstand zur Nachbarin
+   gehört der Spalte, nicht dem Zufall der Textlänge. */
+.a3-drow-state{justify-self:start;text-align:start;min-width:0;padding-inline-start:var(--space-3)}
 .a3-drow-current{background:var(--color-surface-subtle)}
 .a3-drow-failed .a3-drow-file{color:var(--color-status-error)}
 .a3-drow-removed .a3-drow-file{text-decoration:line-through;color:var(--color-text-muted)}
 .a3-drow-actions{display:flex;flex-wrap:wrap;gap:var(--space-2);padding-top:var(--space-2)}
 /* The OPERATIONAL density of the register (audit: 64-72px collapsed, more
    only for a wrapped two-line filename). The row is a line of a register,
-   not a card: hover and focus-within light the whole line, so the always-
-   available Inspect never has to be hunted for, and nothing critical is
-   hover-only — Inspect is a real, permanently visible button. */
+   not a card: hover and focus-within light the whole line, and nothing
+   critical is hover-only — the file name is a real, permanently visible
+   control that opens the document. */
 .a3-drow-compact{padding:var(--space-2) var(--space-2)}
-.a3-drow-compact .a3-drow-main{grid-template-columns:4ch minmax(0,1fr) minmax(0,var(--measure-showcase-narrow)) minmax(0,max-content) max-content;align-items:center;gap:var(--space-3);min-block-size:var(--space-7)}
+.a3-drow-compact .a3-drow-main{grid-template-columns:4ch minmax(0,1fr) minmax(0,max-content) var(--measure-register-state);align-items:center;gap:var(--space-3);min-block-size:var(--space-7)}
 .a3-drow-compact .a3-drow-file{font-size:var(--type-body-size);line-height:var(--type-body-line)}
 .a3-drow:hover,.a3-drow:focus-within{background:var(--color-surface-subtle)}
 .a3-drow-quiet-state{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-muted)}
@@ -2632,7 +2678,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-cfr-choice-input · .a3-cfr-choice-label · .a3-cfr-choice-detail ·
    .a3-cfr-manual · .a3-cfr-actions · .a3-cfr-record ·
    .a3-cfr-record-title · .a3-cfr-record-value · .a3-cfr-record-meta ·
-   .a3-cfr-record-rejected · .a3-cfr-reopen. */
+   .a3-cfr-reopen. */
 .a3-cfr{display:grid;gap:var(--space-4);border:var(--border-contrast-1px);background:var(--color-surface-default);padding:var(--space-5);min-width:0}
 .a3-cfr-open{border-left:var(--size-status-accent-width) solid var(--color-border-warning)}
 .a3-cfr-resolved{border-left:var(--size-status-accent-width) solid var(--color-status-success)}
@@ -2665,7 +2711,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-cfr-record{display:grid;gap:var(--space-2);border-top:var(--border-hairline);padding-top:var(--space-4)}
 .a3-cfr-record-title{margin:0;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--font-weight-bold);color:var(--color-text-secondary);letter-spacing:.06em;text-transform:uppercase}
 .a3-cfr-record-value{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);font-variant-numeric:tabular-nums}
-.a3-cfr-record-meta,.a3-cfr-record-rejected{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-cfr-record-meta{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 .a3-cfr-reopen{justify-self:start;background:transparent;border:0;padding:0;font-size:var(--type-link-size);line-height:var(--type-link-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary);text-decoration:underline;text-underline-offset:var(--size-text-underline-offset)}
 
 /* QuestionQueue. Structure: .a3-qq > .a3-qq-head + .a3-qq-list
@@ -2725,28 +2771,17 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    this level. Two zones, therefore, not three.
    ══════════════════════════════════════════════════════════════════════ */
 
-/* Project shell. Structure: .a3-project-shell > .a3-project-context +
-   .a3-wfn + .a3-project-main — three stacked bands, no permanent left
-   column. The thirteen-row spine that used to hold `--panel-left-width`
-   was removed by the accepted 2026-09-05 Documents workspace audit: it
-   consumed width at every viewport to publish a workflow the user could
-   not act on yet, and pushed the working object below the fold.
-   Classes: .a3-project-shell · .a3-project-context ·
-   .a3-project-context-media · .a3-project-context-identity ·
-   .a3-project-context-name · .a3-project-context-meta ·
-   .a3-project-main. */
+/* Project shell. Structure: .a3-project-shell > .a3-wfn +
+   .a3-project-main — the working bands, and nothing that only restates the
+   project's name: the breadcrumb and the journey rail both carry it, and
+   the identity band spent a third of the first screen saying it again.
+   Classes: .a3-project-shell · .a3-project-main. */
 .a3-project-shell{display:flex;flex-direction:column;align-items:stretch;min-height:100%;min-width:0;padding-inline:var(--space-6)}
-.a3-project-context{display:flex;align-items:center;gap:var(--space-4);inline-size:100%;max-inline-size:var(--measure-workspace);margin-inline:auto;padding-block:var(--space-1);border-bottom:var(--border-hairline);min-width:0}
-.a3-project-context-media{flex:none;display:block;inline-size:56px}
-.a3-project-context-identity{display:grid;gap:var(--space-1);min-width:0}
-.a3-project-context-name{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold);overflow-wrap:break-word}
-.a3-project-context-meta{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word}
 .a3-project-main{display:grid;gap:var(--space-3);align-content:start;padding-block:var(--space-3) var(--space-7);min-width:0;inline-size:100%;max-inline-size:var(--measure-workspace);margin-inline:auto}
 .a3-project-stage-head{outline:0;min-width:0}
 .a3-project-stage-continue{display:flex;flex-wrap:wrap;gap:var(--space-3)}
 @media (max-width:1439px){
   .a3-project-shell{padding-inline:var(--space-5)}
-  .a3-project-context-media{inline-size:48px}
   .a3-project-main{padding-block:var(--space-3) var(--space-6)}
 }
 
@@ -2814,57 +2849,137 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 
 /* PROJECT UNDERSTANDING · the four evidence groups. Structure:
    .a3-evgroups > .a3-evgroups-head + .a3-evgroups-grid > .a3-evgroup ·
-   .a3-evgroup > .a3-evgroup-head + (.a3-evlist | .a3-evgroup-empty) +
-   .a3-evgroup-disclosure + .a3-evlist.a3-evlist-disclosed ·
+   .a3-evgroup > .a3-evgroup-head > .a3-evgroup-toggle, then
+   (.a3-evlist | .a3-evgroup-empty), hidden while the group is closed ·
    .a3-evitem > .a3-evitem-label + .a3-evitem-body.
    Product-specific composition of canonical primitives: the value envelope
    is `AuthorityTrace`, the attention marker is `SemanticStatus`; nothing
    here is a new system capability.
 
-   TWO COLUMNS at 1440 and 1280 alike, not four: four groups side by side
-   would give each ~330 px, and a requirement sentence with its source,
-   authority and downstream line does not read in 330 px. Two columns of
-   ~660 px carry a full sentence on one or two lines at both widths, and the
-   grid is the SAME composition rather than a squeezed one — the second row
-   simply starts lower.
+   ONE COLUMN at every width: the four groups are read top to bottom in
+   their declared order, and a single column is the only layout in which
+   that order is the reading order — two columns make the second group the
+   one to the right, not the one below, and the eye has to choose. Each
+   group gets the full width, so a requirement sentence with its source,
+   authority and downstream line never competes for it; the reading measure
+   of the item body is held by `--measure-body-max` instead of by the
+   column, because a full-width line of prose stops being readable long
+   before it stops fitting.
 
    Classes: .a3-evgroups · .a3-evgroups-head · .a3-evgroups-title ·
-   .a3-evgroups-lede · .a3-evgroups-grid · .a3-evgroup · .a3-evgroup-head ·
-   .a3-evgroup-title · .a3-evgroup-count · .a3-evgroup-empty ·
-   .a3-evgroup-disclosure · .a3-evgroup-disclosure-glyph · .a3-evlist ·
-   .a3-evlist-disclosed · .a3-evitem · .a3-evitem-label ·
-   .a3-evitem-applies · .a3-evitem-body · .a3-evitem-requirement ·
-   .a3-evitem-conflict · .a3-evitem-meta · .a3-evitem-source ·
+   .a3-evgroups-lede · .a3-evgroups-filter · .a3-evgroups-grid · .a3-evgroup · .a3-evgroup-head ·
+   .a3-evgroup-toggle · .a3-evgroup-title · .a3-evgroup-count ·
+   .a3-evgroup-empty · .a3-evgroup-disclosure-glyph · .a3-evlist ·
+   .a3-evitem · .a3-evitem-label ·
+   .a3-evitem-body · .a3-evitem-requirement ·
+   .a3-evitem-conflict · .a3-evitem-meta · .a3-evitem-edit · .a3-evitem-editor · .a3-evitem-source ·
    .a3-evitem-nosource · .a3-evitem-downstream. */
 .a3-evgroups{display:grid;gap:var(--space-4);min-width:0}
 .a3-evgroups-head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:var(--space-2) var(--space-4);min-width:0}
 .a3-evgroups-title{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
 .a3-evgroups-lede{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);max-width:60ch}
-.a3-evgroups-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gutter-workspace);align-items:start;min-width:0}
+.a3-evgroups-filter{margin-block-start:var(--space-4)}
+.a3-evgroups-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--gutter-workspace);align-items:start;min-width:0}
 .a3-evgroup{display:grid;gap:var(--space-2);align-content:start;min-width:0;border-top:var(--border-contrast-1px);padding-top:var(--space-3)}
-.a3-evgroup-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap;min-width:0}
-.a3-evgroup-title{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-evgroup-head{margin:0;min-width:0;font:inherit}
+/* The heading IS the control: full width, the glyph on the left, the count
+   pinned right — so the whole line is the press target and «what is in this
+   group» and «is it open» are read in one place. */
+.a3-evgroup-toggle{display:flex;align-items:baseline;gap:var(--space-3);inline-size:100%;background:transparent;border:0;padding:0;font:inherit;text-align:start;cursor:pointer;min-width:0}
+.a3-evgroup-toggle .a3-evgroup-count{margin-inline-start:auto}
+.a3-evgroup-title{margin:0;min-width:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
 .a3-evgroup-count{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);flex:none}
 .a3-evgroup-empty{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);max-width:52ch}
-.a3-evgroup-disclosure{display:inline-flex;align-items:center;gap:var(--space-2);justify-self:start;background:transparent;border:0;padding:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary);text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset)}
-.a3-evgroup-disclosure-glyph{font-size:var(--type-caption-size);line-height:1;text-decoration:none}
+.a3-evgroup-disclosure-glyph{flex:none;inline-size:var(--size-icon-sm);block-size:var(--size-icon-sm);align-self:center;color:var(--color-text-secondary);transition:transform 120ms ease}
+.a3-evgroup-disclosure-glyph[data-open]{transform:rotate(90deg)}
+@media (prefers-reduced-motion:reduce){.a3-evgroup-disclosure-glyph{transition:none}}
 .a3-evlist{margin:0;display:grid;gap:0;min-width:0}
 /* The disclosed rest is INSET, so «the rest of this group» reads as part of
    the group rather than as a second list beside it. */
-.a3-evlist-disclosed{border-left:var(--border-hairline);padding-left:var(--space-3)}
 .a3-evitem{display:grid;gap:var(--space-1);padding:var(--space-3) 0;border-bottom:var(--border-hairline);min-width:0}
 /* Attention is a RULE plus the item's own words and glyph, never colour on
    its own (rule 8): the `SemanticStatus` inside the value envelope already
    says what is wrong, and this only makes the row findable while scanning. */
 .a3-evitem[data-attention]{border-left:var(--size-status-accent-width) solid var(--color-status-warning);padding-left:var(--space-3)}
+/* EIN Strich, nicht zwei. Die Zeile führt ihn bereits (oben), und
+   `AuthorityTrace` führt in JEDEM seiner Zustände einen eigenen — dasselbe
+   Token, dieselbe Breite, nur eine Ebene tiefer. Ineinander gesetzt lasen
+   sich die beiden als zwei Ränge von Dringlichkeit, die es nicht gibt, und
+   bei verschiedenen Farben (Zeile «zu prüfen», Spur «belegt») sagten sie
+   auf zwei Ebenen Gegenteiliges über dieselbe Angabe. Der innere weicht,
+   wo die Zeile ihn schon trägt; wo sie ihn nicht trägt, bleibt er. */
+.a3-evitem[data-attention] .a3-aut-stacked{border-left:0;padding-left:0}
+/* DER WERT IST DIE SACHE. In der Checkliste stand die Zahl im selben Kegel
+   wie die Sätze um sie herum — bei 94 Zeilen fand das Auge dann nichts, und
+   gelesen werden musste alles. Grösser gesetzt wird NUR die Zahl: der
+   Anforderungssatz («Ein Mindestanteil barrierefreier Wohnungen …») ist
+   ebenfalls ein Wert, aber als Absatz, und 24 px daraus wären eine Wand.
+   Die Einheit bleibt kleiner auf derselben Grundlinie (Regel 31). */
+.a3-evitem .a3-aut-value>.numeric,
+.a3-decrow-decided>.numeric{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--font-weight-bold)}
+.a3-evitem .a3-aut-value>.a3-mro-unit,
+.a3-decrow-decided>.a3-mro-unit{font-size:var(--type-body-size);line-height:var(--type-body-line)}
 .a3-evitem-label{display:grid;gap:0;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
 /* Applicability is a BLOCK element, so the line never depends on markup
    whitespace to separate it from the label (rule 37). */
-.a3-evitem-applies{display:block;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-regular);color:var(--color-text-secondary)}
-.a3-evitem-body{margin:0;display:grid;gap:var(--space-2);min-width:0}
+/* The value envelope keeps the READING measure the column used to give it:
+   at full width a requirement sentence would run far past the point where
+   the eye finds the next line, so the body is capped by the shared body
+   measure (a ch-relative token, so it grows with the font and with longer
+   locales) rather than by the grid. */
+.a3-evitem-body{margin:0;display:grid;gap:var(--space-2);min-width:0;max-width:var(--measure-body-max)}
 .a3-evitem-requirement{font-weight:var(--font-weight-medium)}
 .a3-evitem-conflict{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);max-width:56ch}
 .a3-evitem-meta{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3);min-width:0}
+/* «Bearbeiten» is the quieter twin of the verify link: same caption size and
+   underline, secondary colour, because agreeing with the document is the
+   expected act and changing it is the exception. */
+.a3-evitem-edit{justify-self:start;background:transparent;border:0;padding:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);color:var(--color-text-secondary);text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset);cursor:pointer;position:relative}
+/* The editor opens INSIDE the row, indented under the value it edits, so the
+   value, its source and the change being made are read as one thing. */
+.a3-evitem-editor{display:grid;gap:var(--space-3);justify-items:start;margin-block-start:var(--space-3);border-left:var(--border-hairline);padding-inline-start:var(--space-3);min-width:0}
+/* ── v4 · offene Punkte als Zeilen derselben Checkliste ───────────────────
+   .a3-decrow-marks · .a3-decrow-scope · .a3-decrow-impact ·
+   .a3-decrow-assumption · .a3-decrow-source · .a3-decrow-decided ·
+   .a3-decrow-decided-meta · .a3-decrow-manual
+   Keine eigene Zeilen-Geometrie: die Zeile IST `.a3-evitem`, hier stehen nur
+   die Beistriche, die ein strittiger Wert und eine Frage zusätzlich tragen. */
+.a3-decrow-marks{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3);margin:0 0 var(--space-2);min-width:0}
+.a3-decrow-manual{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+/* Der Trenner gehört der Auszeichnung, nicht dem Text: ein «·» im Wörterbuch
+   wäre Satzbau aus Fragmenten (Regel 36). */
+.a3-decrow-manual::before{content:'·';margin-inline-end:var(--space-1)}
+.a3-decrow-scope{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-decrow-impact{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);max-width:var(--measure-band)}
+.a3-decrow-assumption{margin:var(--space-2) 0 0;padding-inline-start:var(--space-2);border-left:var(--size-status-accent-width) solid var(--color-border-default);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);max-width:var(--measure-band)}
+.a3-decrow-choice{display:grid;justify-items:start;gap:var(--space-2);margin-block-start:var(--space-2);min-width:0}
+/* Die Herkunftszeile bekommt die Breite, die die Spalte hergibt: auf
+   420 px gedeckelt brach sie mitten in der Revisionsangabe um («REV-\ C»),
+   obwohl rechts daneben leerer Platz stand. Kein fester Wert an ihrer
+   Stelle — die Zeile ist Metadaten, keine Leseprosa, und der Umbruch
+   gehört der Spalte. */
+/* Der RHYTHMUS einer Entscheidungszeile. Der Zeilenkörper verteilt sonst
+   denselben Abstand zwischen alle Kinder — dann stehen «Status», «Folge»,
+   «Wert» und «Bearbeiten» gleich weit auseinander und nichts sagt mehr,
+   was zu was gehört. Hier ist der Abstand die Aussage: eng, wo etwas
+   zusammengehört, weit vor dem, was neu anfängt. */
+.a3-evitem-body:has(>.a3-decrow-marks){row-gap:0}
+.a3-evitem-body:has(>.a3-decrow-marks)>.a3-decrow-marks{margin-block-end:var(--space-2)}
+.a3-evitem-body:has(>.a3-decrow-marks)>.a3-decrow-impact{margin-block-end:0}
+.a3-evitem-body:has(>.a3-decrow-marks)>.a3-decrow-assumption{margin-block-start:var(--space-2)}
+/* Die Entscheidung selbst beginnt neu — davor der grösste Abstand der Zeile. */
+.a3-evitem-body:has(>.a3-decrow-marks)>.a3-decrow-choice{margin-block-start:var(--space-4)}
+.a3-evitem-body:has(>.a3-decrow-marks)>.a3-decrow-decided{margin-block-start:var(--space-4)}
+.a3-evitem-body:has(>.a3-decrow-marks)>.a3-docdrawer-actions{margin-block-start:var(--space-4)}
+/* «Bearbeiten» gehört zum Wert darüber, nicht zur nächsten Zeile. */
+.a3-evitem-body:has(>.a3-decrow-marks)>.a3-evitem-meta{margin-block-start:var(--space-1)}
+/* Und zwischen zwei Entscheidungen mehr Luft als zwischen zwei Angaben:
+   eine Entscheidungszeile ist mehrzeilig, und bei gleichem Abstand liefen
+   sie ineinander. */
+.a3-evitem:has(.a3-decrow-marks){padding-block:var(--space-5)}
+.a3-decrow-source{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);max-width:none;justify-self:stretch}
+.a3-decrow-decided{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3);margin:var(--space-2) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
+.a3-decrow-decided-meta{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 .a3-evitem-source{background:transparent;border:0;padding:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary);text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset)}
 .a3-evitem-nosource{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 .a3-evitem-downstream{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
@@ -2887,10 +3002,76 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-docsrc-meta{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
 .a3-docsrc-position{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary);font-variant-numeric:tabular-nums}
 .a3-docsrc-anchor{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);overflow-wrap:break-word}
-.a3-docsrc-frame{display:grid;gap:var(--space-3);align-content:center;justify-items:start;min-height:var(--size-source-viewer-height);border:var(--border-default);background:var(--color-surface-subtle);padding:var(--space-3);min-width:0}
+.a3-docsrc-frame{display:grid;gap:var(--space-3);align-content:stretch;justify-items:stretch;min-height:var(--size-source-viewer-height);border:var(--border-default);background:var(--color-surface-subtle);padding:var(--space-3);min-width:0}
 .a3-docsrc-frame:not([data-empty]){padding:0;align-content:stretch;justify-items:stretch}
 .a3-docsrc-embed{display:block;width:100%;height:var(--size-source-viewer-height);border:0}
 .a3-docsrc-reason{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);max-width:56ch}
+/* THE READING AND ITS SOURCE, SIDE BY SIDE.
+   One column while nothing is open, two equal ones the moment a citation is
+   followed: the evidence groups give way instead of being covered, which is
+   the whole difference between this and the modal drawer it replaces. The
+   panel scrolls with its own overflow and stays put while the reader moves
+   through the column beside it.
+
+   It is HALF THE SECTION, not a card sitting in it: no box of its own, one
+   hairline where the two halves meet, and the full height of the viewport.
+   A framed rectangle floating beside the reading reads as another modal —
+   the very thing this replaces — and the document sheet inside it would
+   then be a border within a border.
+   Classes: .a3-evsplit · .a3-docpanel · .a3-docpanel-head · .a3-docpanel-title */
+.a3-evsplit{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--gutter-workspace);align-items:start;min-width:0}
+.a3-evsplit[data-open]{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.a3-docpanel{position:sticky;top:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:var(--space-3);min-width:0;block-size:calc(100dvh - var(--size-global-header-height));overflow-y:auto;padding-inline-start:var(--gutter-workspace);padding-block:var(--space-3);border-inline-start:var(--border-contrast-1px)}
+/* The viewer takes the height the panel has left; the sheet inside it
+   carries the only border, so the frame stops drawing a second one. */
+.a3-docpanel .a3-docsrc{grid-template-rows:auto minmax(0,1fr);min-block-size:0;block-size:100%}
+.a3-docpanel .a3-docsrc-frame{min-block-size:0;min-height:0;border:0;background:none;padding:0;overflow-y:auto;align-content:start}
+.a3-docpanel{overflow:hidden}
+.a3-docpanel-slot{display:none}
+.a3-docpanel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-3);min-width:0}
+.a3-docpanel-title{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:anywhere;min-width:0}
+/* IT DOES NOT MOVE. The panel is pinned to the viewport, not parked at the
+   top of a section it would ride out of: scrolled far enough, a sticky panel
+   reaches the end of its section and slides away with it, which is exactly
+   what a reader following a citation does not want. Horizontal edges come
+   from the empty slot it left behind (anchor positioning), so the panel is
+   still exactly half of the section; vertical edges come from the viewport.
+   Where anchor positioning is missing, the sticky rules above stand. */
+@supports (anchor-name: --a3-docpanel) and (left: anchor(--a3-docpanel left)){
+  .a3-docpanel-slot{display:block;anchor-name:--a3-docpanel;min-width:0}
+  .a3-docpanel{position:fixed;
+    left:anchor(--a3-docpanel left);right:anchor(--a3-docpanel right);
+    inset-block:var(--size-global-header-height) 0;
+    block-size:auto;background:var(--color-surface-default)}
+}
+/* The split holds down to the supported shell floor (--size-app-min-width,
+   1280px): at 1280 the two columns are ~490px each, still a readable measure.
+   The stacking fallback therefore sits BELOW that floor, where the shell
+   already refuses to render — a breakpoint above it hid the panel off-screen
+   on ordinary 1366 and 1364px windows, which read as "the click does
+   nothing". */
+@media (max-width:1279px){
+  .a3-evsplit[data-open]{grid-template-columns:minmax(0,1fr)}
+  .a3-docpanel-slot{display:none}
+  .a3-docpanel{position:static;inset:auto;block-size:auto;max-block-size:none;overflow:visible;
+    padding-inline-start:0;padding-block:var(--space-4) 0;
+    border-inline-start:0;border-block-start:var(--border-contrast-1px)}
+}
+
+/* THE SHAPE OF A DOCUMENT VIEWER, and deliberately nothing more.
+   Where the prototype stores no file, the drawer shows a page outline with
+   the RHYTHM of text on it: enough for a reader to recognise what will live
+   here, never enough to be read as the document's content. Flat bars on a
+   white sheet — no shimmer (rule 30 forbids it even for real loading), no
+   rounding, no invented words.
+   Classes: .a3-docpage · .a3-docpage-head · .a3-docpage-line ·
+   .a3-docpage-line-short · .a3-docpage-block */
+.a3-docpages{display:grid;gap:var(--space-4);align-content:start;min-width:0}
+.a3-docpage{justify-self:stretch;display:grid;gap:var(--space-3);align-content:start;aspect-ratio:1 / 1.414;inline-size:100%;overflow:hidden;padding:var(--space-5);border:var(--border-hairline);background:var(--color-surface-default)}
+.a3-docpage-head{display:block;block-size:var(--space-4);inline-size:55%;background:var(--color-border-default)}
+.a3-docpage-line{display:block;block-size:var(--space-2);background:var(--color-surface-subtle);border-block-end:var(--border-hairline)}
+.a3-docpage-line-short{inline-size:70%}
+.a3-docpage-block{display:block;block-size:var(--space-8);background:var(--color-surface-subtle);border:var(--border-hairline)}
 .a3-docsrc-recovery{display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-3)}
 .a3-docsrc-provenance{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
 
@@ -3180,7 +3361,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    two lines turns one question into what reads as two, and the ledger's
    decision column is the whole reason this control exists. */
 .a3-choice-compact{flex-wrap:nowrap}
-.a3-choice-option{position:relative;display:inline-flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);min-height:var(--size-hit-target-default);padding:0 var(--space-3);border-right:var(--border-hairline);cursor:pointer;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);color:var(--color-text-primary);min-width:0}
+.a3-choice-option{position:relative;display:inline-flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-2);min-height:var(--size-hit-target-default);padding:0 var(--space-3);border-right:var(--border-hairline);cursor:pointer;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);color:var(--color-text-primary);min-width:0}
 .a3-choice-option:last-child{border-right:0}
 .a3-choice-option[data-checked]{background:var(--color-surface-selected);box-shadow:inset 0 calc(-1 * var(--border-width-strong)) 0 var(--color-selection-border);font-weight:var(--font-weight-bold)}
 .a3-choice-option[data-disabled="true"]{cursor:default;color:var(--color-action-disabled-text);background:var(--color-action-disabled-bg)}
@@ -3189,13 +3370,53 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    users still get the platform's own indicator. */
 .a3-choice-input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:inherit;accent-color:var(--color-selection-border)}
 .a3-choice-option:has(.a3-choice-input:focus-visible){outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:var(--border-width-focus);box-shadow:0 0 0 var(--border-width-focus) var(--color-focus-separator)}
-.a3-choice-check{pointer-events:none;min-width:var(--size-icon-sm);font-weight:var(--font-weight-bold);color:var(--color-selection-border)}
+/* THE SPACE BEFORE THE WORD IS THE RADIO'S OWN MARK, never a blank reserve.
+   Held empty, it read as a lopsided option: a wide gap on the left against a
+   tight edge on the right, with nothing in it until something was chosen.
+   The same circle the compact choice already wears fills it — visible when
+   unchosen, filled with the ✓ when chosen — so the width is carried by a
+   meaning rather than by a placeholder, and the label still does not move
+   when the choice is made (rule 37). */
+.a3-choice-check{pointer-events:none;display:inline-flex;align-items:center;justify-content:center;flex:none;inline-size:var(--size-icon-sm);block-size:var(--size-icon-sm);border:var(--border-default);border-radius:50%;font-size:var(--type-caption-size);line-height:1;font-weight:var(--font-weight-bold);color:var(--color-selection-border)}
+.a3-choice-option:hover .a3-choice-check{border-color:var(--color-border-strong)}
+.a3-choice-option[data-checked] .a3-choice-check{border-color:var(--color-selection-border);background:var(--color-selection-border);color:var(--color-text-inverse)}
+.a3-choice-option[data-disabled="true"] .a3-choice-check{border-color:var(--color-action-disabled-text)}
 .a3-choice-label{pointer-events:none;min-width:0}
 /* The consequence sits UNDER its option, not beside it: beside it, a
    six-row ledger's decision column grew wider than its own summary and
    consequence columns together and pushed them off the 1280 composition. */
-.a3-choice-consequence{flex-basis:100%;pointer-events:none;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-caption-weight);color:var(--color-text-secondary);white-space:nowrap}
+.a3-choice-consequence{flex-basis:100%;pointer-events:none;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-caption-weight);color:var(--color-text-secondary);white-space:normal;overflow-wrap:break-word;min-width:0}
 .a3-choice-compact .a3-choice-option{padding:0 var(--space-2);gap:var(--space-1);font-size:var(--type-caption-size);line-height:var(--type-caption-line)}
+/* THE COMPACT CHOICE HAS TO LOOK LIKE A CHOICE.
+   Reported on the scope ledger: two words in a bordered box read as a table
+   cell, not as two controls — nothing on an UNCHOSEN option said it could be
+   chosen. The checked one carried the whole affordance (tint, weight, ✓) and
+   the unchecked one carried an empty 16px gap where the glyph would go.
+   Three additions, none of them colour alone (rule 8): every option now
+   wears the radio's own mark — an empty circle before the word, filled with
+   the released ✓ when chosen; the hover/focus state tints the option so the
+   pointer proves it is live; and the whole group sits on the default surface
+   so it reads as a control on the row rather than as part of the row.
+   The mark is a perfect circle, which rule 4 allows beside rectangles. */
+/* The group stands on the subtle surface so the pair reads as a control
+   sitting ON the row rather than as two more cells of it; the chosen option
+   then lifts to the selected surface, and the contrast between them is what
+   a glance reads first. */
+.a3-choice-compact{background:var(--color-surface-subtle)}
+.a3-choice-compact .a3-choice-check{display:inline-flex;align-items:center;justify-content:center;flex:none;inline-size:var(--size-icon-sm);block-size:var(--size-icon-sm);border:var(--border-default);border-radius:50%;font-size:var(--type-caption-size);line-height:1}
+.a3-choice-compact .a3-choice-option:hover{background:var(--color-surface-default)}
+.a3-choice-compact .a3-choice-option:hover .a3-choice-check{border-color:var(--color-border-strong)}
+.a3-choice-compact .a3-choice-option[data-checked]{background:var(--color-surface-selected)}
+/* A label is a label at every width: wrapping `nicht enthalten` in half
+   turned one control into two lines and moved everything below it. */
+.a3-choice-compact .a3-choice-label{white-space:nowrap}
+/* The standing choice's amount is READ, not skimmed past: secondary grey is
+   for the consequences of moves not yet made, and this one has been made. */
+.a3-choice-compact .a3-choice-option[data-checked] .a3-choice-consequence{color:var(--color-text-primary)}
+.a3-choice-compact .a3-choice-option[data-checked] .a3-choice-check{border-color:var(--color-selection-border);background:var(--color-selection-border);color:var(--color-text-inverse)}
+/* A disabled option must not pretend to react to the pointer. */
+.a3-choice-compact .a3-choice-option[data-disabled="true"]:hover{background:var(--color-action-disabled-bg)}
+.a3-choice-compact .a3-choice-option[data-disabled="true"] .a3-choice-check{border-color:var(--color-action-disabled-text)}
 .a3-choice-reason{margin:var(--space-1) 0 0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 
 /* ── CommercialNumber ─────────────────────────────────────────────────── */
@@ -3219,7 +3440,15 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-ledger-meaning{display:block;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
 .a3-ledger-boundary{display:block;margin-top:var(--space-1);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);max-width:38ch;overflow-wrap:break-word}
 .a3-ledger-state{display:block;color:var(--color-text-primary)}
-.a3-ledger-decision{white-space:nowrap;width:1%}
+/* THE DECISION COLUMN NEVER BREAKS ITS OPTIONS.
+   `width:1%` alone let the table hand this column whatever was left after
+   the prose columns took theirs, so `nicht enthalten` wrapped onto a second
+   line and the row's height jumped between one state and the next. The
+   width is declared in CHARACTERS (rule 3a) rather than pixels — the two
+   labels plus their marks are what has to fit, in every locale — and the
+   table already lives inside `.a3-tbl-scroll`, which is what absorbs the
+   extra width at narrow viewports instead of the row. */
+.a3-ledger-decision{white-space:nowrap;width:1%;min-inline-size:30ch}
 .a3-ledger-summary{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
 /* The glyph stays with the first line of its own label: with the status
    free to wrap, a narrow consequence column orphaned the `!` on a line of
@@ -3252,7 +3481,16 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 /* ── KGConfigurationPage ──────────────────────────────────────────────── */
 .a3-kgp{min-width:0}
 .a3-kgp-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-5);margin-bottom:var(--space-5)}
-.a3-kgp-identity{min-width:0}
+/* THE TITLE COLUMN TAKES THE ROOM, and the status column can give it back.
+   Both were `auto`-sized against a sibling that refused to shrink
+   (`flex:0 0 auto`), so the moment the status carried a REASON — the long
+   "erneut zu prüfen" sentence of the stale state — its max-content width
+   took the whole row and the heading collapsed to zero, typesetting itself
+   one letter per line. `1 1 auto` against `0 1 auto` states what the two
+   columns actually are: one is the page's identity, the other is a note
+   beside it. The status keeps a measure in `ch` (rule 3a) rather than a
+   pixel width (rule 37), so it wraps instead of pushing. */
+.a3-kgp-identity{flex:1 1 auto;min-width:0}
 /* A CHAPTER TITLE IS NOT A HERO METRIC (VR3-TGA-01, AC 5).
    `--type-heading-1-desktop` is 48px — the exact size rule 31 reserves for
    the Leitkennzahl and the Bauzeit. Printing the words "KG 400 · Technische
@@ -3261,7 +3499,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    32/40 for exactly that reason. The page keeps its `h1`; it stops
    borrowing the hero's weight. */
 .a3-kgp-title{font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);margin:var(--space-1) 0 var(--space-2);overflow-wrap:break-word;hyphens:auto}
-.a3-kgp-progress{flex:0 0 auto;text-align:right}
+.a3-kgp-progress{flex:0 1 auto;min-width:0;max-inline-size:min(100%,34ch);text-align:right}
 .a3-kgp-groupnav{margin-bottom:var(--space-4)}
 .a3-kgp-groupnav ul{display:flex;flex-wrap:wrap;gap:var(--space-2);list-style:none;margin:0;padding:0}
 .a3-kgp-groupnav-item{appearance:none;display:inline-flex;align-items:center;gap:var(--space-2);min-height:var(--size-hit-target-default);padding:0 var(--space-3);border:var(--border-contrast-1px);background:var(--color-surface-default);font:inherit;font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);color:var(--color-text-primary);cursor:pointer}
@@ -3463,24 +3701,52 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-sys{border-bottom:var(--border-hairline)}
 .a3-sys:last-of-type{border-bottom:0}
 .a3-sys-h{margin:0;font-size:inherit;font-weight:inherit}
-.a3-sys-btn,.a3-sys-row{position:relative;display:grid;grid-template-columns:var(--space-7) minmax(11ch,.8fr) minmax(16ch,1.4fr) auto minmax(10ch,max-content) var(--space-4);gap:var(--space-3);align-items:center;width:100%;min-height:var(--size-hit-target-default);padding:var(--space-2) var(--space-2) var(--space-2) var(--space-1);background:none;border:0;border-left:var(--space-1) solid transparent;text-align:left;color:inherit;font:inherit}
+.a3-sys-btn,.a3-sys-row{position:relative;display:grid;grid-template-columns:var(--space-7) minmax(11ch,.8fr) minmax(16ch,1.4fr) 16ch 14ch var(--space-4);gap:var(--space-3);align-items:baseline;width:100%;min-height:var(--size-hit-target-default);padding:var(--space-2) var(--space-2) var(--space-2) var(--space-1);background:none;border:0;border-left:var(--space-1) solid transparent;text-align:left;color:inherit;font:inherit}
 .a3-sys-btn{cursor:pointer}
 .a3-sys-btn:hover{background:var(--color-surface-subtle)}
 .a3-sys-btn:hover .a3-sys-name{text-decoration:underline}
 .a3-sys-btn:focus-visible{outline:var(--border-width-focus) solid var(--color-focus-ring);outline-offset:calc(var(--border-width-focus) * -1)}
-.a3-sys-pict{display:grid;place-items:center;width:var(--space-7);height:var(--space-7);border:var(--border-hairline);background:var(--color-surface-subtle)}
+/* EVERY COLUMN SITS ON THE SAME BASELINE.
+   The row was centred, so a two-line system name pushed its own cell up and
+   down while the one-line cells beside it stayed put. Aligning to the top
+   was not enough either: the five text columns are set at four different
+   sizes (label 16, solution 14, state and note 12), so equal TOPS still
+   produced four different baselines — the staircase was inside the row, not
+   only between rows. `baseline` locks the first line of every column to one
+   line; the pictogram and the chevron are marks rather than text and stay
+   centred against the row. */
+.a3-sys-pict{align-self:center;display:grid;place-items:center;width:var(--space-7);height:var(--space-7);border:var(--border-hairline);background:var(--color-surface-subtle)}
 .a3-sys-pict img{display:block;width:var(--space-5);height:var(--space-5)}
 .a3-sys-name{font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
 .a3-sys-sol{display:grid;gap:2px;min-width:0}
 .a3-sys-solp{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
 .a3-sys-sols{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word;hyphens:auto}
-.a3-sys-state{display:inline-flex;align-items:baseline;gap:var(--space-1);justify-self:end;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold);letter-spacing:var(--tracking-caption);text-transform:uppercase;white-space:nowrap;color:var(--color-text-secondary)}
-.a3-sys-glyph{font-weight:var(--font-weight-bold)}
+/* The state column, like the cost column beside it, is a DECLARED measure
+   that wraps inside itself. `auto` plus `nowrap` meant «1 Entscheidung
+   offen» and «konfiguriert» produced two different row geometries, so the
+   whole row shifted when a system's state changed under the reader. */
+/* ONE RUN OF TEXT, NOT A FLEX ROW.
+   As a wrapping flex container the mark and the words were two items, and
+   an item never splits across lines — so the ○ sat alone on line one and
+   the whole phrase moved to line two. A mark that means something IS part
+   of the sentence it marks (rule 8), so the state is plain inline text: the
+   glyph, a space, and words that wrap after it like any other words. */
+.a3-sys-state{display:block;justify-self:start;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold);letter-spacing:var(--tracking-caption);text-transform:uppercase;white-space:normal;overflow-wrap:break-word;min-width:0;color:var(--color-text-secondary)}
+.a3-sys-glyph{margin-inline-end:var(--space-1);font-weight:var(--font-weight-bold)}
 .a3-sys[data-state="decided"] .a3-sys-state{color:var(--color-status-success)}
 .a3-sys[data-attention="deviation"] .a3-sys-state,.a3-sys[data-state="open"] .a3-sys-state,.a3-sys[data-state="partial"] .a3-sys-state{color:var(--color-status-warning)}
 .a3-sys[data-state="fromSource"] .a3-sys-state,.a3-sys[data-state="notApplicable"] .a3-sys-state{color:var(--color-text-secondary);font-weight:var(--font-weight-medium)}
-.a3-sys-cost{justify-self:end;text-align:right;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);font-variant-numeric:tabular-nums;color:var(--color-text-primary);white-space:nowrap}
-.a3-sys-tw{justify-self:end;color:var(--color-text-secondary)}
+/* THE COST COLUMN HAS ITS OWN ROOM AND WRAPS INSIDE IT.
+   `nowrap` on a column sized `max-content` meant one long sentence — «keine
+   gesonderte Preisgrundlage» — took whatever width it needed and every other
+   column in that row gave it up, so the row's whole geometry depended on
+   which of two sentences the system happened to carry. The column is a
+   declared measure now (in `ch`, because the content is text as often as it
+   is a figure), and a phrase too long for it breaks onto the next line
+   instead of pushing its neighbours. A FIGURE still never breaks — the
+   nowrap moved to the numeric case alone. */
+.a3-sys-cost{justify-self:end;text-align:right;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);font-variant-numeric:tabular-nums;color:var(--color-text-primary);white-space:normal;overflow-wrap:anywhere;hyphens:auto;min-width:0}
+.a3-sys-tw{align-self:center;justify-self:end;color:var(--color-text-secondary)}
 /* Exceptions are loud enough to scan; normal is quiet. */
 .a3-sys[data-attention="open"] > .a3-sys-h > .a3-sys-btn{border-left-color:var(--color-status-warning);background:var(--color-surface-emphasis-warm)}
 .a3-sys[data-attention="deviation"] > .a3-sys-h > .a3-sys-btn{border-left-color:var(--color-border-warning)}
@@ -3538,6 +3804,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-dec-price:empty{display:none}
 .a3-dec-act{display:flex;align-items:center;justify-content:flex-end;gap:var(--space-3);justify-self:end;min-width:0}
 .a3-dec-act:empty{display:none}
+/* A LABEL NEVER BREAKS INSIDE A WORD.
+   `overflow-wrap` is inherited, so a container that allows breaking
+   anywhere — the measures this workspace sets for long German compounds —
+   reached the controls inside it too, and a 64px action read «Änder / n».
+   Words still wrap BETWEEN themselves, which is what a two-word label
+   needs; only the word itself is kept whole. */
+.a3-btn{overflow-wrap:normal;word-break:normal}
 .a3-dec-change.a3-btn{font-size:var(--type-caption-size);line-height:var(--type-caption-line);padding:var(--space-1) var(--space-3);min-height:var(--size-control-visual-md)}
 .a3-dec-na{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-muted);overflow-wrap:break-word;hyphens:auto}
 .a3-dec[data-na] .a3-dec-name{color:var(--color-text-muted)}
@@ -3640,10 +3913,12 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-conseq-acts{display:flex;flex-wrap:wrap;gap:var(--space-3)}
 
 @media (max-width:1439px){
-  /* 1280: the system row gives up its horizontal three-column tail before
-     the identity gives up any width. State and money stay on the row; the
-     summary keeps its own line. */
-  .a3-sys-btn,.a3-sys-row{grid-template-columns:var(--space-6) minmax(10ch,.75fr) minmax(14ch,1.3fr) auto minmax(9ch,max-content) var(--space-4);gap:var(--space-2)}
+  /* 1280: the identity columns narrow, but the STATE and MONEY tracks stay
+     declared in `ch` exactly as they are above the breakpoint. Sizing them
+     from content (`auto` / `max-content`) is what put the staircase back:
+     every row is its own grid, so a content-sized track is as wide as THAT
+     row's words and no two rows align. Narrower here, never content-led. */
+  .a3-sys-btn,.a3-sys-row{grid-template-columns:var(--space-6) minmax(10ch,.75fr) minmax(14ch,1.3fr) 14ch 12ch var(--space-4);gap:var(--space-2)}
   .a3-sys-pict{width:var(--space-6);height:var(--space-6)}
   .a3-sys-body,.a3-sys-nareason{padding-left:calc(var(--space-6) + var(--space-2) + var(--space-1))}
   .a3-dec-line{grid-template-columns:minmax(11ch,.7fr) minmax(16ch,1.5fr) minmax(0,max-content) auto}
@@ -3733,31 +4008,177 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-sched-field-hint{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);max-width:38ch}
 .a3-sched-field-error{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-status-error);max-width:38ch}
 
+/* BAUZEIT (VR3 · Variante `v3`) — die gerechnete Terminstufe.
+   Struktur:
+   .a3-bz > .a3-bz-panel* (Ergebnis · Gantt · Parameter · Gebäude · Zahlungen)
+   Gantt: .a3-bz-gantt-scroll > .a3-bz-gantt > .a3-bz-grow*
+   (.a3-bz-grow-label + .a3-sched-track|.a3-bz-axis + .a3-bz-grow-duration).
+   Die Zeilenraster von `.a3-bz-grow` und `.a3-bz-axis-row` sind identisch —
+   eine Achse, die anders rastert als ihre Balken, ist eine Achse, die lügt.
+   Classes: .a3-bz · .a3-bz-panel · .a3-bz-params · .a3-bz-params-row ·
+   .a3-bz-readouts · .a3-bz-readout · .a3-bz-gantt-scroll · .a3-bz-gantt ·
+   .a3-bz-grow · .a3-bz-grow-building · .a3-bz-grow-head · .a3-bz-grow-label ·
+   .a3-bz-grow-sub · .a3-bz-grow-duration · .a3-bz-bar-s0…s4 ·
+   .a3-bz-bar-foundation · .a3-bz-bar-shell · .a3-bz-bar-fitout ·
+   .a3-bz-bar-acceptance · .a3-bz-milestones · .a3-bz-milestone ·
+   .a3-bz-legend · .a3-bz-legend-item · .a3-bz-swatch · .a3-bz-axis-row · .a3-bz-axis · .a3-bz-tick ·
+   .a3-bz-tick-month · .a3-bz-tick-date · .a3-bz-cards · .a3-bz-card ·
+   .a3-bz-card-title · .a3-bz-card-inputs · .a3-bz-facts · .a3-bz-why · .a3-bz-table-scroll ·
+   .a3-bz-next · .a3-bz-settings · .a3-bz-fieldset · .a3-bz-note */
+.a3-bz{display:grid;gap:var(--space-5);min-width:0}
+.a3-bz-panel{background:var(--color-surface-default);border:var(--border-hairline);padding:var(--space-5);min-width:0}
+/* Die zwei Projekteingaben stehen waagerecht nebeneinander, nicht
+   untereinander in einer schmalen Spalte: zwei Felder sind keine Kolonne. */
+.a3-bz-params-row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-4) var(--space-6);min-width:0}
+.a3-bz-params-row>*{min-width:0;flex:0 1 auto}
+.a3-bz-params-row>.a3-form-field{inline-size:min(100%,var(--measure-form-control));row-gap:0}
+/* Der Abstand Beschriftung → Eingabe ist derselbe wie bei den Feldern der
+   Gebäudekarte (`.a3-sched-field`): zwei Felder derselben Seite, die ihre
+   Beschriftung unterschiedlich weit über sich tragen, lesen sich wie zwei
+   verschiedene Formulare. Die Regel ist hier eingegrenzt — das kanonische
+   `.a3-form-field` gilt auf vielen anderen Bildschirmen weiter. */
+.a3-bz-params-row>.a3-form-field>.a3-input{margin-block-start:var(--space-1)}
+/* `align-items`/`align-content` stehen hier ausdrücklich auf `start`, und
+   das ist kein Feinschliff: eine Rasterzelle streckt sich auf die Höhe der
+   höchsten Zelle ihrer Reihe, und ein Raster mit automatischen Reihen
+   verteilt diese geschenkte Höhe auf seine Reihen. Die eine Kennzahl mit
+   Fußnote machte so ALLE Kennzahlen ihrer Reihe hoch, und zwischen
+   Bezeichnung und Zahl klaffte Platz, den niemand gesetzt hatte. */
+.a3-bz-readouts{display:grid;grid-template-columns:repeat(auto-fit,minmax(18ch,1fr));gap:var(--space-4) var(--space-5);margin:0;align-items:start}
+.a3-bz-readout{display:grid;gap:var(--space-1);align-content:start;min-width:0}
+.a3-bz-readout>dt{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);margin:0}
+/* Wie bei den Gantt-Zeilen: gestapelt unter der Bezeichnung, deshalb links
+   an ihr ausgerichtet. `.numeric` stellt Zahlen sonst rechtsbündig (Regel 7),
+   was in einer Tabellenspalte richtig ist und unter einer Überschrift nicht. */
+.a3-bz-readout>dd{margin:0;font-size:var(--type-input-size);line-height:var(--type-input-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);text-align:left}
+.a3-bz-readout>p{margin:0}
+
+.a3-bz-gantt-scroll{overflow-x:auto;min-width:0}
+/* Die Mindestbreite wächst mit der Zahl der Monatsmarken, weil die Achse
+   JEDEN Monat beziffert: `--a3-bz-months` ist die Zahl der Marken und kommt
+   aus der Zeile, die sie zeichnet. Reicht die Breite des Panels nicht, dann
+   scrollt dieser Kasten waagerecht (Regel 3a) — und nur er, denn die
+   Namensspalte klebt darin fest (`.a3-bz-grow-head`). */
+.a3-bz-gantt{display:grid;gap:var(--space-2);min-inline-size:max(var(--measure-chart),calc(var(--measure-schedule-label) + var(--space-3) + var(--measure-schedule-month) * var(--a3-bz-months,12)))}
+/* ZWEI Spalten, nicht drei: die Dauer gehört zur Zeile und steht als
+   sekundäre Zeile UNTER ihrem Namen. Als eigene Spalte stand sie am
+   anderen Ende des Balkens und las sich wie eine zweite Größe. */
+.a3-bz-grow{display:grid;grid-template-columns:minmax(12ch,var(--measure-schedule-label)) minmax(0,1fr);column-gap:0;row-gap:var(--space-3);align-items:center;min-width:0}
+.a3-bz-grow-building{margin-block-start:var(--space-3)}
+/* Der Abstand zum Balken liegt IM Kopf, nicht in der Rasterlücke: der Kopf
+   bleibt beim waagerechten Scrollen stehen, und eine Lücke daneben wäre ein
+   Spalt, durch den die Balken darunter hindurchwandern. */
+.a3-bz-grow-head{display:grid;gap:0;min-width:0;position:sticky;inset-inline-start:0;z-index:1;background:var(--color-surface-default);padding-inline-end:var(--space-3);align-self:stretch;align-content:center}
+.a3-bz-grow-label{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-bz-grow-building .a3-bz-grow-label{font-weight:var(--font-weight-bold)}
+.a3-bz-grow-sub{padding-inline-start:var(--space-4)}
+.a3-bz-grow-sub .a3-bz-grow-label{color:var(--color-text-secondary)}
+/* Ein Unterzeile, kein Tabellenwert: `.numeric` stellt Zahlen rechtsbündig
+   (Regel 7), und rechtsbündig stand die Dauer am anderen Ende ihrer eigenen
+   Spalte statt unter dem Namen, zu dem sie gehört. Die Ziffernbreite aus
+   `.numeric` bleibt, nur die Ausrichtung folgt der Überschrift darüber. */
+.a3-bz-grow-duration{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);white-space:nowrap;text-align:left}
+
+/* Die Balkenfarben sind die Palette des Bauzeit-Rechners, aus dem dieser
+   Bildschirm rechnet — dieselbe Phase, dieselbe Farbe in beiden Werkzeugen.
+   Jede Zeile trägt ihren Namen daneben, die Farbe steht also nie allein. */
+.a3-bz-bar-s0{background:var(--color-schedule-phase-contract)}
+.a3-bz-bar-s1{background:var(--color-schedule-phase-design)}
+.a3-bz-bar-s2{background:var(--color-schedule-phase-permit)}
+.a3-bz-bar-s3{background:var(--color-schedule-phase-execution)}
+.a3-bz-bar-s4,.a3-bz-bar-foundation{background:var(--color-schedule-phase-foundation)}
+.a3-bz-bar-shell{background:var(--color-schedule-phase-shell)}
+.a3-bz-bar-fitout{background:var(--color-schedule-phase-fitout)}
+.a3-bz-bar-acceptance{background:var(--color-schedule-phase-acceptance)}
+
+.a3-bz-milestones{background:none;border-block-end:var(--border-hairline)}
+.a3-bz-milestone{position:absolute;top:0;bottom:0;inline-size:var(--border-width-strong);margin-inline-start:calc(var(--border-width-strong) * -0.5)}
+.a3-bz-milestone-design,.a3-bz-milestone-legend{background:var(--color-schedule-payment-design)}
+.a3-bz-milestone-shell{background:var(--color-schedule-payment-shell)}
+.a3-bz-milestone-fitout{background:var(--color-schedule-payment-fitout)}
+.a3-bz-milestone-acceptance{background:var(--color-schedule-payment-acceptance)}
+
+.a3-bz-legend{list-style:none;margin:var(--space-4) 0 0;padding:0;display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-4);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-bz-legend-item{display:flex;align-items:center;gap:var(--space-2);min-width:0}
+.a3-bz-swatch{display:inline-block;inline-size:var(--space-3);block-size:var(--space-3);flex:none}
+
+.a3-bz-axis-row{align-items:start}
+/* Der Kopf der Achsenzeile ist so hoch wie die Achse selbst, nicht so hoch
+   wie sein eine Wort: sonst scrollt die zweite Beschriftungszeile der
+   Monatsmarken (der Monatsname) unter ihm hervor und steht in der
+   Namensspalte. Sein Text bleibt oben. */
+.a3-bz-axis-row .a3-bz-grow-head{align-content:start}
+.a3-bz-axis{position:relative;display:block;block-size:calc(var(--type-caption-line) * 2);min-width:0}
+.a3-bz-tick{position:absolute;top:0;display:grid;gap:0;transform:translateX(-50%);text-align:center;white-space:nowrap}
+/* Die erste und die letzte Marke stehen an ihrer Kante, nicht mittig über
+   ihr: mittig ragte die Hälfte von `M0` links aus der Achse heraus und
+   verschwand unter der feststehenden Namensspalte, und die Hälfte der
+   letzten Marke ragte rechts aus dem Kasten. Die Marken tragen keinen
+   Strich, nur Text — die Kante ist ihre Position. */
+.a3-bz-tick:first-child{transform:none;text-align:start}
+.a3-bz-tick:last-child{transform:translateX(-100%);text-align:end}
+.a3-bz-tick-month{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary)}
+.a3-bz-tick-date{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+
+.a3-bz-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(var(--measure-card-compact),1fr));gap:var(--space-5);align-items:start}
+.a3-bz-card{border:var(--border-hairline);padding:var(--space-4);min-width:0;display:grid;gap:0;align-content:start}
+/* Drei Eingaben je Reihe: Fläche, Typ und Klasse beschreiben zusammen, WAS
+   für ein Gebäude das ist, und lesen sich untereinander wie drei getrennte
+   Fragen. Die Fundamentdauer rutscht damit in die zweite Reihe — sie ist
+   auch inhaltlich die erste Terminannahme und keine Gebäudeeigenschaft. */
+.a3-bz-card-inputs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-4) var(--space-5);align-items:start;min-width:0}
+.a3-bz-card-inputs>.a3-sched-field{margin-bottom:0}
+.a3-bz-card-title{margin:0 0 var(--space-3);font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--type-heading-weight);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
+.a3-bz-facts{display:grid;gap:var(--space-2);margin:var(--space-3) 0 0;border-block-start:var(--border-hairline);padding-block-start:var(--space-3)}
+.a3-bz-facts>div{display:grid;grid-template-columns:minmax(14ch,1fr) minmax(0,1.2fr);gap:var(--space-3);align-items:baseline;min-width:0}
+.a3-bz-facts dt{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);margin:0}
+.a3-bz-facts dd{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);overflow-wrap:break-word}
+.a3-bz-why{margin-block-start:var(--space-3);border-block-start:var(--border-hairline);padding-block-start:var(--space-3)}
+
+.a3-bz-table-scroll{overflow-x:auto;min-width:0}
+.a3-bz-next{display:block;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+
+.a3-bz-settings{display:grid;grid-template-columns:repeat(auto-fit,minmax(var(--measure-form-control),1fr));gap:var(--space-5);align-items:start;margin-block-start:var(--space-4)}
+.a3-bz-fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;gap:0;align-content:start}
+.a3-bz-fieldset>legend{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);padding:0;margin-block-end:var(--space-3)}
+.a3-bz-note{max-width:var(--measure-band)}
+
+@media (max-width:1279px){
+  /* Schmaler Bildschirm: die Namensspalte gibt Breite ab — der Wert wird am
+     Gantt gesetzt, damit die Mindestbreite darüber mit derselben Zahl
+     rechnet, mit der die Zeilen rastern. */
+  .a3-bz-gantt{--measure-schedule-label:14ch}
+  .a3-bz-grow{grid-template-columns:minmax(10ch,var(--measure-schedule-label)) minmax(0,1fr)}
+  .a3-bz-card-inputs{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
 /* ── VR3-04 · ValidationReview · ReviewIndex · ReviewSection (T-030–T-032)
    A long review, grouped and navigable. Structure:
    .a3-rvw > .a3-rvw-body > (.a3-rvw-index > nav.a3-rvi) +
      (.a3-rvw-sections > section.a3-rvs*) + [.a3-rvw-dock].
    Classes: .a3-rvw · .a3-rvw-body · .a3-rvw-index · .a3-rvw-sections ·
-   .a3-rvw-dock · .a3-rvi · .a3-rvi-progress · .a3-rvi-list · .a3-rvi-item ·
-   .a3-rvi-link · .a3-rvi-state · .a3-rvi-label · .a3-rvi-count · .a3-rvs ·
+   .a3-rvw-dock · .a3-rvi · .a3-rvi-list · .a3-rvi-item ·
+   .a3-rvi-link · .a3-rvi-state · .a3-rvi-label · .a3-rvs ·
    .a3-rvs-head · .a3-rvs-title · .a3-rvs-rows · .a3-rvs-row ·
-   .a3-rvs-issues · .a3-rvs-issue · .a3-rvs-route · .a3-rvs-ack */
+   .a3-rvs-issues · .a3-rvs-issue · .a3-rvs-route · .a3-rvs-ack ·
+   .a3-rvs-row-open · .a3-rvs-disclose · .a3-rvs-disclose-value ·
+   .a3-rvs-disclose-mark · .a3-rvs-details · .a3-rvs-detail-list ·
+   .a3-rvs-detail · .a3-rvs-detail-label · .a3-rvs-detail-value ·
+   .a3-rvs-detail-action · .a3-rvs-edit */
 .a3-rvw{display:grid;gap:var(--space-5);min-width:0}
 .a3-rvw-body{display:grid;grid-template-columns:minmax(0,var(--measure-context-panel-compact)) minmax(0,1fr);gap:var(--space-5);align-items:start}
 .a3-rvw-index{position:sticky;top:var(--space-4);align-self:start;min-width:0}
 .a3-rvw-sections{display:grid;gap:var(--space-4);min-width:0}
 .a3-rvw-dock{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:var(--space-4);background:var(--color-surface-default);border:var(--border-hairline);padding:var(--space-5)}
 .a3-rvw-dock>.a3-rvs-ack{margin-top:0}
-.a3-rvi{background:var(--color-surface-default);border:var(--border-hairline);padding:var(--space-4);min-width:0}
-.a3-rvi-progress{margin:0 0 var(--space-3);font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--type-label-weight);color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:var(--type-tracking-caps)}
+.a3-rvi{background:var(--color-surface-default);border:var(--border-hairline);padding:var(--space-3);min-width:0}
 .a3-rvi-list{list-style:none;margin:0;padding:0}
 .a3-rvi-item{border-top:var(--border-hairline)}
 .a3-rvi-item:first-child{border-top:none}
-.a3-rvi-link{display:grid;grid-template-columns:2ch minmax(0,1fr) max-content;gap:var(--space-2);align-items:baseline;width:100%;min-height:var(--size-hit-target-default);padding:var(--space-2) 0;background:none;border:none;font:inherit;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);text-align:left;cursor:pointer}
+.a3-rvi-link{display:grid;grid-template-columns:1.5ch minmax(0,1fr);gap:var(--space-1);align-items:baseline;width:100%;min-height:var(--size-hit-target-default);padding:var(--space-2) 0;background:none;border:none;font:inherit;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);text-align:left;cursor:pointer}
 .a3-rvi-link[aria-current="true"]{font-weight:var(--font-weight-bold);box-shadow:inset var(--border-width-strong) 0 0 var(--color-text-primary);padding-left:var(--space-2)}
 .a3-rvi-state{color:var(--color-text-secondary)}
 .a3-rvi-label{overflow-wrap:break-word;hyphens:auto;min-width:0}
-.a3-rvi-count{font-variant-numeric:tabular-nums;color:var(--color-text-secondary);white-space:nowrap}
 .a3-rvs{background:var(--color-surface-default);border:var(--border-hairline);padding:var(--space-5);scroll-margin-top:var(--space-6);min-width:0}
 .a3-rvs[data-state="ISSUE"]{border-left:var(--border-width-strong) solid var(--color-status-error)}
 .a3-rvs[data-state="STALE"]{border-left:var(--border-width-strong) solid var(--color-status-warning)}
@@ -3777,6 +4198,43 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-rvs-issue{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-3);border-left:var(--border-width-strong) solid var(--color-status-error);padding:var(--space-2) var(--space-4);background:var(--color-surface-subtle)}
 .a3-rvs-route{appearance:none;display:inline-flex;align-items:center;min-height:var(--size-hit-target-default);background:none;border:none;font:inherit;font-size:var(--type-small-size);line-height:var(--type-small-line);padding:0;cursor:pointer;text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset);color:var(--color-text-primary)}
 .a3-rvs-ack{margin-top:var(--space-4);display:flex;flex-wrap:wrap;align-items:flex-start;gap:var(--space-3)}
+/* Eine Zusammenfassungszeile, die sich öffnet (Owner, 16.09.2026).
+   Der Satz SELBST ist der Schalter: worauf der Leser zeigt, das klappt auf.
+   Die Zeile bleibt eine Zeile — die Liste wächst unter ihr, nichts
+   verschiebt sich seitlich. */
+.a3-rvs-disclose{appearance:none;display:grid;grid-template-columns:minmax(0,1fr) 2ch;gap:var(--space-2);align-items:baseline;width:100%;min-height:var(--size-hit-target-default);background:none;border:none;padding:0;font:inherit;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);text-align:left;cursor:pointer}
+.a3-rvs-disclose-value{min-width:0;overflow-wrap:break-word}
+.a3-rvs-disclose-mark{color:var(--color-text-secondary);justify-self:end}
+.a3-rvs-details{margin-top:var(--space-2)}
+.a3-rvs-detail-list{list-style:none;margin:0;padding:0}
+/* Die Spalte der Schaltfläche ist IMMER reserviert (Regel 24): das
+   Erscheinen von „Bearbeiten" verschiebt weder Namen noch Wert. Die
+   Zeilenhöhe ist die Trefferfläche selbst — 44 px, damit sich die
+   Trefferflächen zweier benachbarter Schaltflächen nicht überlappen
+   (R-04, LAYOUT-009). */
+.a3-rvs-detail{display:grid;grid-template-columns:minmax(0,1fr) minmax(12ch,max-content);grid-template-areas:"label action" "value action";column-gap:var(--space-3);align-items:center;min-height:var(--size-hit-target-default);padding:var(--space-1) 0;border-top:var(--border-hairline)}
+.a3-rvs-detail:first-child{border-top:none}
+/* Name ÜBER Wert, nicht daneben: die Lesespalte der Prüfung ist schmal, und
+   zwei Textspalten plus die reservierte Schaltflächenspalte darin brachen
+   die Namen mitten im Wort („Wärmeab | gabe"). Keine feste Breite, keine
+   Silbentrennung im Falschen — die Zeile wächst nach unten. */
+.a3-rvs-detail-label{grid-area:label;color:var(--color-text-secondary);min-width:0;overflow-wrap:break-word;hyphens:auto}
+.a3-rvs-detail-value{grid-area:value;color:var(--color-text-primary);min-width:0;overflow-wrap:break-word}
+.a3-rvs-detail-action{grid-area:action;justify-self:end;align-self:center;min-width:0}
+/* Sichtbar bei Zeigergeste ODER Tastaturfokus — und auf einem Gerät ohne
+   Zeiger immer. Eine Schaltfläche, die nur unter der Maus erscheint, gibt
+   es für Tastatur und Touch nicht. Sie ist in jedem Fall im DOM, fokussier-
+   und bedienbar; nur ihre Deckkraft ändert sich. */
+.a3-rvs-edit{appearance:none;display:inline-flex;align-items:center;justify-content:center;min-height:var(--size-hit-target-default);padding:0 var(--space-2);background:none;border:var(--border-hairline);font:inherit;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);cursor:pointer;opacity:0;transition:opacity var(--motion-duration-fast) var(--motion-easing-standard)}
+.a3-rvs-detail:hover .a3-rvs-edit,
+.a3-rvs-detail:focus-within .a3-rvs-edit,
+.a3-rvs-edit:focus-visible{opacity:1}
+@media (hover:none){
+  .a3-rvs-edit{opacity:1}
+}
+@media (prefers-reduced-motion:reduce){
+  .a3-rvs-edit{transition:none}
+}
 
 /* ── VR3-04 · SaveReceipt (targets T-033, M-08) ──────────────────────────
    Structure: .a3-svr > .a3-svr-body > .a3-svr-eyebrow + .a3-svr-heading +
@@ -4099,7 +4557,13 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    min-width is the second half of R-04 — two 32 px-tall segments narrower
    than 44 px would overlap each other's invisible zones, which is the exact
    defect the condition exists to forbid. */
-.a3-segmented-fieldset[data-size="compact"] .a3-radio-segments label{min-height:var(--size-control-visual-sm);min-width:var(--size-hit-target-default);justify-content:center;padding:0 var(--space-3);gap:var(--space-1);font-size:var(--type-caption-size);line-height:var(--type-caption-line)}
+.a3-segmented-fieldset[data-size="compact"] .a3-radio-segments label{min-height:var(--size-control-visual-sm);min-width:var(--size-hit-target-default);justify-content:center;padding:var(--space-2) var(--space-3);gap:var(--space-1);font-size:var(--type-caption-size);line-height:var(--type-caption-line)}
+/* Zweizeilige Segmente (Wert + Einordnung): der Haken steht an der ERSTEN
+   Zeile, nicht in der Mitte zwischen beiden — er gehört zum Wert, und
+   mittig gesetzt zeigte er auf den Zwischenraum. Links bleibt nur der
+   Abstand, den der Haken braucht; die Marke ist keine eigene Spalte. */
+.a3-radio-segments label:has(.a3-segment-detail){align-items:start;padding-inline-start:var(--space-2);gap:var(--space-1)}
+.a3-radio-segments label:has(.a3-segment-detail)>.a3-segment-check{min-width:0;line-height:inherit}
 .a3-segmented-fieldset[data-size="compact"] .a3-segment-check{min-width:0}
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -4127,8 +4591,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-pf-count · .a3-pf-results · .a3-pf-list · .a3-pf-card ·
    .a3-pf-media · .a3-pf-body · .a3-pf-identity · .a3-pf-status-line ·
    .a3-pf-title · .a3-pf-parties · .a3-pf-party · .a3-pf-party-sep ·
-   .a3-pf-metrics · .a3-pf-metric · .a3-pf-value · .a3-pf-value-figure ·
-   .a3-pf-value-note · .a3-pf-actions · .a3-pf-note · .a3-pf-aside ·
+   .a3-pf-metrics · .a3-pf-metric · .a3-pf-actions · .a3-pf-note · .a3-pf-aside ·
    .a3-pf-deadline · .a3-pf-deadline-label · .a3-pf-deadline-value ·
    .a3-pf-deadline-clock · .a3-pf-deadline-cue · .a3-pf-dates ·
    .a3-pf-date · .a3-pf-aside-meta · .a3-pf-links · .a3-pf-links-legend ·
@@ -4201,7 +4664,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    no unit test can see a column that is `--size-icon-lg` wide. */
 .a3-pf-empty{display:grid;gap:var(--space-3);align-content:start;min-width:0}
 .a3-pf-list{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-4);min-width:0}
-.a3-pf-card{display:grid;grid-template-columns:minmax(0,240px) minmax(0,1fr) minmax(0,232px);border:var(--border-contrast-1px);background:var(--color-surface-default);min-width:0}
+.a3-pf-card{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,232px);border:var(--border-contrast-1px);background:var(--color-surface-default);min-width:0}
 /* Media stays FULL CARD HEIGHT and is resized, never reduced to a
    thumbnail: at a 300 px card, 240 px wide is a 4:5 architectural portrait,
    and it is the reason five German timber projects are distinguishable at a
@@ -4232,7 +4695,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    shares one right edge; here every value has its own column and its own
    label, so the shared edge does not exist and the alignment would only
    push each number away from the word that names it. Tabular figures stay. */
-.a3-pf-metrics{margin:0;display:grid;grid-template-columns:repeat(4,minmax(8rem,1fr));gap:var(--space-3) var(--space-4);border-top:var(--border-hairline);padding-top:var(--space-3);min-width:0}
+.a3-pf-metrics{margin:0;display:grid;grid-template-columns:repeat(6,minmax(8rem,1fr));gap:var(--space-3) var(--space-4);border-top:var(--border-hairline);padding-top:var(--space-3);min-width:0}
 .a3-pf-metric{min-width:0}
 .a3-pf-metric dt{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
 .a3-pf-metric dd{margin:var(--space-1) 0 0;text-align:left;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word}
@@ -4252,12 +4715,6 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    requires: an incomplete scope is a SUBTOTAL and says so. 32 → 24 px: it
    is still the largest numeral in the card, and it no longer competes with
    the title for the eye. */
-.a3-pf-value{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--space-3);border-top:var(--border-hairline);padding-top:var(--space-3);min-width:0}
-.a3-pf-value-figure{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:0 var(--space-3);min-width:0}
-.a3-pf-value-figure dt{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
-.a3-pf-value-figure dd{margin:0;text-align:left;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word}
-.a3-pf-value-figure dd[data-unknown]{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-regular);color:var(--color-text-secondary)}
-.a3-pf-value-note{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);overflow-wrap:break-word}
 /* One wrapping row. The demonstration marker is a flex ITEM here, centred
    against the 44 px controls, so it costs zero rows; the canonical
    `Button.disabledReason` still renders below its own button, in reading
@@ -4335,7 +4792,7 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    it, and the metric strip keeps ALL FOUR columns because the body is still
    ~780 px wide. No band moves, nothing stacks, no field is hidden. */
 @media (max-width:1365px){
-  .a3-pf-card{grid-template-columns:minmax(0,200px) minmax(0,1fr) minmax(0,200px)}
+  .a3-pf-card{grid-template-columns:minmax(0,1fr) minmax(0,200px)}
   /* The narrower aside squeezes the record-date label column to ~90 px, and
      `Zuletzt geändert` needs ~88 — one token of gutter is the difference
      between two 16 px rows and four. */
@@ -4345,10 +4802,10 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
   .a3-pf-panel-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .a3-pf-panel-grid>.a3-pf-status{grid-column:1 / -1}
 }
-/* 1280: the evidence groups keep TWO columns — at ~600 px each a
-   requirement sentence still reads on one or two lines — but the head band
-   stacks, because a title and a 60ch lede on one baseline would push the
-   lede to three lines in the remaining width. */
+/* 1280: the groups themselves need no breakpoint — one column is one column
+   at every width — but the head band stacks, because a title and a 60ch
+   lede on one baseline would push the lede to three lines in the remaining
+   width. */
 @media (max-width:1365px){
   .a3-evgroups-head{display:grid;gap:var(--space-1)}
 }
@@ -4510,12 +4967,52 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-docws-count-text ·
    .a3-docws-facts · .a3-docws-fact · .a3-docws-rail-lede ·
    .a3-docws-rail-scope. */
-.a3-docws-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2) var(--space-4);min-width:0}
+.a3-docws-head{display:grid;gap:var(--space-2);min-width:0}
+.a3-docws-headline{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-2) var(--space-4);min-width:0}
 .a3-docws-title{margin:0;font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);outline:0}
 .a3-docws-summary{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
-.a3-docws{display:grid;grid-template-columns:minmax(0,1fr) var(--measure-analysis-rail);gap:var(--gutter-workspace);align-items:start;min-width:0}
-.a3-docws-register{grid-column:1;grid-row:1;display:grid;gap:var(--space-3);align-content:start;min-width:0}
-.a3-docws-rail{grid-column:2;grid-row:1;position:sticky;top:var(--space-4);align-self:start;min-width:0}
+/* Its own row under the title band, measured in characters. The band keeps
+   its baseline row for the title and the attention count; a sentence sharing
+   that baseline with a 32 px heading reads as a subtitle rather than as the
+   answer to «where did these files come from». */
+.a3-docws-origin{margin:0;max-inline-size:78ch;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+/* Inline link inside the sentence. The affordance is the underline, so it
+   survives a reader who cannot separate the colours (rule 8's habit); the
+   glyph carries the brand orange, which rule 5 forbids for 14 px TEXT
+   (3,10:1 on white) and permits for a graphical object (≥ 3:1). `.hit-target`
+   supplies the 44 × 44 press area without touching the line box. */
+.a3-docws-origin-link{color:var(--color-brand-accent);text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset)}
+.a3-docws-origin-link:hover{text-decoration-thickness:var(--border-width-strong)}
+.a3-docws-origin-icon{display:inline-block;inline-size:var(--size-icon-sm);block-size:var(--size-icon-sm);margin-inline-end:var(--space-1);vertical-align:-2px;color:var(--color-brand-accent)}
+/* The analysis job is a BAND, not a column: it states the job of the whole
+   page (state · counts · the actions that start, stop or follow it), and a
+   page-wide statement that sits in a side column reads as an aside about
+   the list next to it. Full width under the page heading, the register
+   below it at the register's own width. */
+.a3-docws{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--gutter-workspace);align-items:start;min-width:0}
+.a3-docws-register{grid-column:1;grid-row:2;display:grid;gap:var(--space-3);align-content:start;min-width:0}
+.a3-docws-rail{grid-column:1 / -1;grid-row:1;position:static;align-self:start;min-width:0}
+.a3-docws-rail .a3-pjob-rail{display:flex;flex-wrap:wrap;align-items:center;column-gap:var(--space-6);row-gap:var(--space-3)}
+/* The state word is a LABEL of the band, not a headline competing with the
+   page title above it: body size, always on its own line at the top, so the
+   facts and the actions read as one row underneath it whatever the state
+   makes them contain. */
+.a3-docws-rail .a3-pjob-rail .a3-pjob-head{flex:1 1 100%;order:-1}
+.a3-docws-rail .a3-pjob-title{font-size:var(--type-body-size);line-height:var(--type-body-line)}
+.a3-docws-rail .a3-pjob-summary{flex:1 1 auto;display:flex;flex-wrap:wrap;column-gap:var(--space-6);row-gap:var(--space-3);align-items:start}
+/* Two facts per column, filling downwards: a band of eight facts in one
+   row would push the actions off the line, and a fact is read as
+   label + number, not as a row of eight numbers. */
+.a3-docws-rail .a3-docws-facts{grid-auto-flow:column;grid-template-rows:repeat(2,auto);grid-auto-columns:minmax(14ch,max-content);column-gap:var(--space-5);row-gap:var(--space-1)}
+/* The actions start at the band's left edge, on their own line: the same
+   place in every state, so the forward action does not travel across the
+   band as the facts grow from two to eight. */
+.a3-docws-rail .a3-pjob-actions{flex:1 1 100%;margin-inline-start:0;flex-direction:row;align-items:center;justify-content:flex-start;flex-wrap:wrap}
+/* Progress and the file in flight take the full line under the facts:
+   they are the only parts of the band that grow while it runs, and the
+   band must not reflow its actions every few hundred milliseconds. */
+.a3-docws-rail .a3-pjob-progress,
+.a3-docws-rail .a3-pjob-active{flex:1 1 100%}
 .a3-docws-controls{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--space-3);border-bottom:var(--border-default);padding-bottom:var(--space-2);min-width:0}
 .a3-docws-toolbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--space-3);flex:1 1 var(--measure-panel);min-width:0}
 .a3-docws-control{flex:0 1 auto;min-inline-size:0}
@@ -4529,9 +5026,28 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-docws-fact dd{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);font-variant-numeric:tabular-nums}
 .a3-docws-rail-lede{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
 .a3-docws-rail-scope{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+/* PREVIEW OPEN: the register gives way, it is not covered.
+   Two halves, exactly as the evidence step splits — the task is comparing
+   one document against the register it sits in, and a sheet over the list
+   makes the reader choose between the two. Three columns were tried first
+   and refused: at the supported floor they leave the register ~420 px, where
+   a file name sets one syllable per line. The rail therefore moves ABOVE the
+   register in the left half — it is already first in the DOM, so nothing
+   about the reading or the tab order is rearranged, and the page's one
+   forward action stays on screen (DC-27) instead of being traded for the
+   preview. */
+.a3-docws[data-preview]{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+/* With the document open, the band is as wide as the WORK is: the panel is
+   a sticky full-height surface, so a band running under it would put its
+   actions behind the document. */
+.a3-docws[data-preview] .a3-docws-rail{grid-column:1;grid-row:1}
+.a3-docws[data-preview] .a3-docws-register{grid-column:1;grid-row:2}
+.a3-docws[data-preview] .a3-docpanel{grid-column:2;grid-row:2}
 @media (max-width:1279px){
-  .a3-docws{grid-template-columns:minmax(0,1fr)}
+  .a3-docws,.a3-docws[data-preview]{grid-template-columns:minmax(0,1fr)}
   .a3-docws-register,.a3-docws-rail{grid-column:1;grid-row:auto}
+  .a3-docws-rail .a3-pjob-actions{margin-inline-start:0}
+  .a3-docws[data-preview] .a3-docpanel{grid-column:1;grid-row:auto}
   .a3-docws-rail{position:static}
 }
 
@@ -4548,13 +5064,14 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-optctx-actions · .a3-optsw · .a3-optsw-trigger · .a3-optsw-caret ·
    .a3-optsw-menu · .a3-optsw-item · .a3-optsw-current · .a3-optsw-name ·
    .a3-optsw-state · .a3-options · .a3-options-head · .a3-options-title ·
-   .a3-options-count · .a3-options-resume · .a3-options-list · .a3-options-links ·
+   .a3-options-count · .a3-options-list · .a3-options-links ·
    .a3-optrow · .a3-optrow-active ·
    .a3-optrow-head · .a3-optrow-identity · .a3-optrow-name · .a3-optrow-badges ·
    .a3-optrow-value · .a3-optrow-valuelabel · .a3-optrow-amount ·
    .a3-optrow-pending · .a3-optrow-meta · .a3-optrow-note · .a3-optrow-actions ·
    .a3-present-stage · .a3-present-lead · .a3-present-baseline ·
-   .a3-present-baseline-row · .a3-present-actions · .a3-route-notice ·
+   .a3-present-baseline-row · .a3-present-unsaved · .a3-present-actions ·
+   .a3-route-notice ·
    .a3-account-link. */
 .a3-option-shell{display:flex;flex-direction:column;align-items:stretch;min-height:100%;min-width:0;padding-inline:var(--space-6)}
 .a3-option-main{display:grid;gap:var(--space-3);align-content:start;padding-block:var(--space-3) var(--space-7);min-width:0;inline-size:100%;max-inline-size:var(--measure-workspace);margin-inline:auto}
@@ -4580,32 +5097,46 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-optsw-state{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
 .a3-options{display:grid;gap:var(--space-4);min-width:0}
 .a3-options-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-3);min-width:0}
+.a3-options-head-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);min-width:0}
 .a3-options-title{margin:0;font-size:var(--type-heading-2-size);line-height:var(--type-heading-2-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);outline:none}
 .a3-options-title:focus-visible{outline:var(--border-width-focus-emphasis) solid var(--color-focus-ring);outline-offset:var(--border-width-focus-emphasis)}
 .a3-options-count{font-weight:var(--font-weight-regular);color:var(--color-text-secondary)}
-.a3-options-resume{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-secondary)}
 .a3-options-list{list-style:none;margin:0;padding:0;display:grid;gap:var(--space-3);min-width:0}
 .a3-options-links{margin:0;display:flex;flex-wrap:wrap;gap:var(--space-4)}
 .a3-optrow{display:grid;gap:var(--space-2);border:var(--border-contrast-1px);padding:var(--space-4);min-width:0;outline:none}
 .a3-optrow:focus-visible{outline:var(--border-width-focus-emphasis) solid var(--color-focus-ring);outline-offset:var(--border-width-focus-emphasis)}
+/* The BASE Option — the variant every other one departs from — is the first
+   row and reads as the head of the list: a heavier rule on its leading edge,
+   with the name itself saying which one it is, so the mark is never the only
+   thing carrying the meaning (rule 8). */
+.a3-optrow-base{border-inline-start:var(--border-width-strong) solid var(--color-text-primary)}
 .a3-optrow-active{border-left:var(--border-width-strong) solid var(--color-brand-accent)}
 .a3-optrow-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:var(--space-4);min-width:0}
 .a3-optrow-identity{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3);min-width:0}
 .a3-optrow-name{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word}
 .a3-optrow-badges{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}
-.a3-optrow-value{display:grid;gap:0;justify-items:end;text-align:end;min-width:0}
+/* THE VALUE BLOCK IS A SMALL TABLE, NOT A RIGHT-ALIGNED PARAGRAPH.
+   Right-aligning everything inside it put the labels, their normative
+   denominators and the amounts on three different ragged edges, so the eye
+   had no column to run down and the block read as noise beside the name.
+   The block keeps its place on the right of the row and its own measure;
+   inside it, labels start at one edge and figures end at the other, which
+   is the only arrangement in which `274 €/m²` and `200 €/m²` can be
+   compared at a glance. */
+.a3-optrow-value{display:grid;gap:var(--space-1);justify-items:stretch;text-align:start;min-width:0;inline-size:min(100%,var(--measure-option-summary))}
 .a3-optrow-valuelabel{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 .a3-optrow-amount{font-size:var(--type-metric-section-size);line-height:var(--type-metric-section-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
 .a3-optrow-pending{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-medium);color:var(--color-text-secondary)}
 .a3-optrow-meta{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:break-word}
 .a3-optrow-note{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-muted)}
-.a3-optrow-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:var(--space-3);border-top:var(--border-hairline);padding-top:var(--space-3)}
+.a3-optrow-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-start;gap:var(--space-3);border-top:var(--border-hairline);padding-top:var(--space-3)}
 .a3-present-stage{display:grid;gap:var(--space-4);justify-items:start;max-inline-size:var(--measure-body-max);min-width:0}
 .a3-present-lead{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-secondary)}
 .a3-present-baseline{margin:0;display:grid;gap:var(--space-2);inline-size:100%}
 .a3-present-baseline-row{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:var(--space-3);border-bottom:var(--border-hairline);padding-bottom:var(--space-2)}
 .a3-present-baseline-row > dt{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
 .a3-present-baseline-row > dd{margin:0;font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
+.a3-present-unsaved{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:var(--space-4);inline-size:100%;background:var(--color-surface-default);border:var(--border-hairline);padding:var(--space-5)}
 .a3-present-actions{display:flex;flex-wrap:wrap;gap:var(--space-3)}
 .a3-route-notice{margin:0;flex:none;border-bottom:var(--border-hairline);background:var(--color-surface-subtle);padding:var(--space-2) var(--space-6);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
 .a3-account-link{display:flex;align-items:center;gap:var(--space-3);inline-size:100%;min-height:var(--size-hit-target-default);border:0;background:transparent;text-align:start;font-size:var(--type-body-size);line-height:var(--type-body-line);color:var(--color-text-secondary)}
@@ -4644,6 +5175,18 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    the secondary commercial facts. It carries no interactive content in any
    state, so it never needs to receive a pointer. */
 .a3-cockpit .a3-preview-slot,.a3-cockpit .a3-preview{pointer-events:none}
+/* THE PREVIEW READS AS PART OF THE RAIL, not as loose text across it.
+   Body size in a 303px column put the sentence on three lines, unpadded to
+   both edges and clipped by the slot's own ceiling — it crossed the facts
+   beneath it and lost its last words. Caption size with the rail's own side
+   padding keeps it inside the column and inside the slot. */
+.a3-cockpit .a3-change-slot-anchor>.a3-preview-slot{padding:var(--space-1) var(--space-4);max-height:var(--size-cockpit-preview-slot)}
+/* In the reserved change box the ghost sits where the committed chip sits,
+   so the box reads as ONE region whichever of the two is in it. The rule is
+   the chip's own geometry with a neutral edge — never a status colour: a
+   preview states no outcome. */
+.a3-cockpit-changeslot .a3-preview{border-left:var(--size-status-accent-width) solid var(--color-border-default);padding-left:var(--space-2)}
+.a3-cockpit .a3-preview{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 
 /* ── 1 · the commercial result ─────────────────────────────────────────── */
 .a3-cockpit .a3-rail-band-budget{max-height:var(--size-rail-band-budget);overflow:hidden;padding:10px var(--space-5);border-bottom:var(--border-hairline)}
@@ -4656,13 +5199,49 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
 .a3-cockpit-hero{margin:0;font-weight:var(--type-display-numeric-weight);font-size:var(--type-heading-1-narrow-size);line-height:var(--type-heading-1-narrow-line);color:var(--color-text-display-accent);white-space:nowrap;font-variant-numeric:tabular-nums;letter-spacing:-.015em}
 .a3-cockpit-hero .a3-cockpit-unit{font-size:var(--type-body-size);line-height:1;font-weight:var(--type-display-numeric-weight);margin-left:1px}
 .a3-cockpit-hero-absent{margin:0}
-/* THE CHANGE-FEEDBACK SLOT. It holds either the permanent commercial basis
-   or, for its four-second life, the committed change — reserved for the
-   taller of the two, so the swap costs zero geometry and obscures no
-   persistent commercial fact. */
-.a3-cockpit-basis{min-height:var(--size-cockpit-basis-slot);margin:6px 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
-.a3-cockpit-basis p{margin:0}
-.a3-cockpit-changeslot{min-height:var(--size-cockpit-change-slot);margin:6px 0 0;display:flex;align-items:flex-start}
+/* THE QUALIFICATION OF THE HERO NUMBER — how complete the calculation is
+   and how wide its interval is, in the slot the retired basis line held.
+   Same reserved height, so nothing below it moves (rule 24) and the budget
+   band's fixed max-height still fits its contents.
+
+   The level is a FILLED RECTANGLE WITH AN ACCENT EDGE, never a pill: no
+   radius anywhere (rule 4). Its colour repeats what the word already says
+   (rule 8), and the word itself stays `--color-text-primary` — the status
+   greens and ambers are border/icon/fill colours and fail 4,5:1 as text
+   (tokens.css, status block). Both strings it prints are mocked; see the
+   note at the call site in OfferPanel.tsx. */
+.a3-cockpit-quality{min-height:var(--size-cockpit-basis-slot);margin:6px 0 0;display:grid;gap:var(--space-1);min-width:0}
+.a3-cockpit-quality-k{margin:0;font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--type-label-weight);letter-spacing:var(--type-tracking-caps);text-transform:uppercase;color:var(--color-text-secondary)}
+.a3-cockpit-quality-v{margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-cockpit-quality-level{display:inline-block;border-left:var(--size-status-accent-width) solid var(--color-status-success);background:var(--color-surface-success);padding:0 var(--space-2);font-size:var(--type-badge-metadata-size);line-height:var(--type-badge-metadata-line);font-weight:var(--font-weight-bold);letter-spacing:var(--type-tracking-caps);text-transform:uppercase;color:var(--color-text-primary)}
+/* ДВА ПРЕТЕНДЕНТА НА ОДНУ И ТУ ЖЕ ЗАРЕЗЕРВИРОВАННУЮ КОРОБКУ, И ПОРЯДОК У НИХ
+   ТЕПЕРЬ ОБРАТНЫЙ: результат совершённого клика (`.a3-cockpit-change`) лежит
+   НАД гипотезой наведения (`.a3-preview`). Прежняя расстановка (превью > чип,
+   EXP-02) означала, что мышь, пошедшая к следующему варианту, перекрывала и
+   гасила плашку результата, который пользователь ещё не дочитал.
+   Обе плашки — элементы одной ячейки grid (`grid-area:1/1`), поэтому
+   появление и уход любой из них не двигают ни одного пикселя (правило 24):
+   высота коробки зафиксирована `--size-cockpit-change-slot` независимо от
+   содержимого, как и была. `isolation:isolate` держит слои локальными —
+   шкала `--layer-*` верхнего уровня не участвует. */
+.a3-cockpit-changeslot{min-height:var(--size-cockpit-change-slot);max-height:var(--size-cockpit-change-slot);overflow:hidden;margin:6px 0 0;display:grid;grid-template-columns:minmax(0,1fr);align-content:start;isolation:isolate}
+.a3-cockpit-changeslot>.a3-preview,.a3-cockpit-changeslot>.a3-cockpit-change{grid-area:1/1;min-width:0}
+.a3-cockpit-changeslot>.a3-preview{z-index:var(--layer-change-preview)}
+/* Непрозрачная земля у верхнего слоя — иначе превью просвечивало бы сквозь
+   результат (тот же механизм «трёх наложенных слоёв», что EXP-02 нашёл у
+   прозрачного слота). */
+.a3-cockpit-changeslot>.a3-cockpit-change{z-index:var(--layer-change-result);background:var(--color-surface-default)}
+/* Пока результат жив, превью убрано ПОЛНОСТЬЮ, а не частично закрыто: чип
+   занимает одну–две строки, превью — до трёх, и торчащий из-под чипа хвост
+   чужой строки — визуальный мусор, а не слоистость. Превью остаётся
+   смонтированным и вернётся собственным переходом, когда чип улетит, —
+   контракт DC-28 (вторичный цвет, задержка 200 мс) не тронут. */
+.a3-cockpit-changeslot:has(.a3-cockpit-change)>.a3-preview{opacity:0}
+/* The label line is the one that may be cut: it names the axis the cursor
+   is already on, and the reader is looking at it. The money lines below it
+   are the statement itself and are never truncated — which is only
+   guaranteed while the line above them cannot wrap. */
+.a3-cockpit-changeslot .a3-preview-line:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .a3-cockpit-changeslot p{margin:0}
 .a3-cockpit-change{border-left:var(--size-status-accent-width) solid var(--color-status-success);padding-left:var(--space-2);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary)}
 .a3-cockpit-change[data-direction="increase"]{border-left-color:var(--color-status-warning)}
@@ -4755,6 +5334,47 @@ a.a3-cockpit-effect:hover .a3-cockpit-effect-name{color:var(--color-text-primary
 .a3-dt-tag{display:inline-block;font-size:var(--type-caption-size);line-height:var(--type-caption-line);padding:0 6px;border:var(--border-hairline);color:var(--color-text-secondary);white-space:nowrap}
 .a3-dt-tag[data-tone="warning"]{border-color:var(--color-status-warning);color:var(--color-status-warning)}
 .a3-dt-tag[data-tone="success"]{border-color:var(--color-status-success);color:var(--color-status-success)}
+/* The disclosure on a row's own name (contract change 16.09.2026). It is a
+   real button, so it inherits nothing from the cell by accident and states
+   its own press target: 44 px via `hit-target`, which grows the target and
+   not the row (rule 23). Depth is indentation only — the tree is expressed
+   by the numbering the sheet already has, not by four levels of rule. */
+.a3-dt .a3-dt-twist{appearance:none;background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:start;cursor:pointer;display:block;inline-size:100%;position:relative}
+.a3-dt .a3-dt-twist::after{content:'▸';position:absolute;inset-inline-start:calc(-1 * var(--space-4));color:var(--color-text-secondary)}
+.a3-dt .a3-dt-twist[aria-expanded="true"]::after{content:'▾'}
+.a3-dt tr[data-depth] th{padding-inline-start:var(--space-4)}
+.a3-dt tr[data-depth="1"] th{padding-inline-start:var(--space-6)}
+.a3-dt tr[data-depth="2"] th{padding-inline-start:calc(var(--space-6) + var(--space-5))}
+.a3-dt tr[data-depth="3"] th{padding-inline-start:calc(var(--space-6) + var(--space-6))}
+
+/* ── Checkbox — the bare box, for a cell in a long list ─────────────────── */
+.a3-check{display:inline-flex;align-items:center;gap:var(--space-2);min-block-size:var(--size-hit-target-default)}
+.a3-check-input{inline-size:var(--size-icon-sm);block-size:var(--size-icon-sm);accent-color:var(--color-text-primary);position:relative;cursor:pointer}
+.a3-check-label{cursor:pointer}
+
+/* ── Die Schnittstellenmatrix (v4) ─────────────────────────────────────── */
+.a3-matrix{display:grid;gap:var(--space-3);min-width:0}
+.a3-matrix-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--space-3)}
+.a3-matrix-count{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+/* The name column yields, the three mark columns do not: each is exactly as
+   wide as its own header and never narrower than one 44 px press target, so
+   two boxes can never come within reach of each other (R-04). */
+/* THE LIST SCROLLS INSIDE ITSELF, so its head can stay.
+   `sticky` needs a scroll container to stick to, and the base
+   `.a3-dt-scroll` is only as tall as its table — a sticky head there sticks
+   to nothing while the PAGE is what moves. Bounding the matrix makes the
+   region the scroller: the column names stay on screen through all 167
+   positions, and the page keeps the chapter head and both step actions in
+   place instead of pushing them a screen and a half away. */
+.a3-matrix .a3-dt-scroll{max-block-size:70vh;overflow:auto}
+.a3-matrix-table thead th{position:sticky;inset-block-start:0;z-index:1;background:var(--color-surface-default);border-bottom:var(--border-contrast-1px)}
+.a3-matrix-table tbody th{min-width:22ch}
+.a3-matrix-table td{width:1%;white-space:nowrap;min-width:var(--size-hit-target-default);text-align:center}
+.a3-matrix-table thead th:not(:first-child){text-align:center}
+.a3-matrix-name{display:grid;gap:2px;min-width:0}
+.a3-matrix-nr{font-feature-settings:var(--font-numeric);text-align:start;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-matrix-label{overflow-wrap:break-word;hyphens:manual}
+.a3-matrix-sub{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);font-weight:var(--type-small-weight)}
 
 /* ── KOSTENDETAILS · the Option's commercial explanation, as a page ─────── */
 /* One reading column, one section rhythm, one provenance surface. Nothing
@@ -4824,7 +5444,6 @@ a.a3-cockpit-effect:hover .a3-cockpit-effect-name{color:var(--color-text-primary
 .a3-resp-owner{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-muted);overflow-wrap:break-word}
 
 /* The schedule gate's way back to the step before it (VR3-TGA-UX-00). */
-.a3-sched-back{margin:var(--space-4) 0 0}
 
 /* ── MediaGallery · the canonical client-facing gallery (VR3-CP-00) ────────
    One dominant view over supporting ones, and a full-screen inspection that
@@ -4917,7 +5536,7 @@ a.a3-cockpit-effect:hover .a3-cockpit-effect-name{color:var(--color-text-primary
 .a3-cp-rail-item:not([aria-current]){padding:0 var(--space-2)}
 .a3-cp-rail-step{appearance:none;display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;min-width:var(--size-hit-target-default);min-height:var(--size-hit-target-default);border:0;background:transparent;padding:0 var(--space-2);font:inherit;font-size:var(--type-heading-3-size);line-height:1;color:var(--color-text-primary);cursor:pointer}
 .a3-cp-rail-step:hover{background:var(--color-surface-subtle)}
-.a3-cp-fullscreen{min-width:var(--size-hit-target-default);padding-left:var(--space-2);padding-right:var(--space-2);font-size:var(--type-heading-3-size);line-height:1}
+.a3-cp-fullscreen{min-width:var(--size-hit-target-default);padding-left:var(--space-2);padding-right:var(--space-2);line-height:1}
 .a3-cp-rail-step[aria-disabled="true"]{color:var(--color-text-secondary);cursor:default}
 .a3-cp-rail-step[aria-disabled="true"]:hover{background:transparent}
 .a3-cp-rail-index{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
@@ -5254,6 +5873,12 @@ a.a3-cockpit-effect:hover .a3-cockpit-effect-name{color:var(--color-text-primary
    wraps as a unit, which is why the denominator is a block-level span
    inside it rather than a sibling column. */
 .a3-oms{display:grid;gap:var(--space-2);min-width:0}
+/* The card variant inside an Option row: the amount leads on its own line,
+   the facts line up beneath it as label → figure, and a hairline separates
+   the two so the total is not read as one more fact. */
+.a3-oms-card .a3-oms-total{display:grid;gap:0;justify-items:start;padding-bottom:var(--space-2);border-bottom:var(--border-hairline)}
+.a3-oms-card .a3-oms-fact{column-gap:var(--space-4)}
+.a3-oms-card .a3-oms-fact-v{justify-self:end;text-align:end}
 .a3-oms-total{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-2);min-width:0}
 .a3-oms-total-value{font-weight:var(--font-weight-bold);color:var(--color-text-primary)}
 /* A MISSING price is not a metric, so it is not typeset as one: quiet,
@@ -5399,3 +6024,123 @@ a.a3-cockpit-effect:hover .a3-cockpit-effect-name{color:var(--color-text-primary
 .a3-bsp-impact-option input{flex:none;inline-size:var(--size-icon-sm);block-size:var(--size-icon-sm);margin:0;accent-color:var(--color-selection-border)}
 .a3-bsp-conflict,.a3-bsp-candidate{display:grid;gap:var(--space-2);margin-top:var(--space-2);border-left:var(--size-status-accent-width) solid var(--color-border-warning);background:var(--color-surface-default);padding:var(--space-2) var(--space-3);min-width:0}
 .a3-bsp-conflict-detail{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);max-width:var(--measure-band);overflow-wrap:break-word}
+
+/* ── a3-gostep · stage-2 forward step ─────────────────────────────────
+   The single next step at the bottom of Project understanding. The tip
+   is anchored to the control, not to the page: it appears on hover and on
+   keyboard focus, because the button stays focusable while it is inert
+   (`aria-disabled`, never the native `disabled`).
+   Classes: .a3-gostep · .a3-gostep-anchor · .a3-gostep-tip ·
+   .a3-gostep-tip-head · .a3-gostep-tip-list. */
+.a3-gostep{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3);justify-content:flex-start;padding-top:var(--space-4);min-width:0}
+.a3-gostep-anchor{position:relative;display:inline-flex}
+.a3-gostep-tip{position:absolute;bottom:calc(100% + var(--space-2));left:0;z-index:20;display:grid;gap:var(--space-1);inline-size:max-content;max-inline-size:min(360px,calc(100vw - var(--space-6)));padding:var(--space-2) var(--space-3);border:var(--border-contrast-1px);background:var(--color-surface-default);color:var(--color-text-primary);opacity:0;visibility:hidden;transition:opacity 120ms linear}
+.a3-gostep-anchor:hover .a3-gostep-tip,.a3-gostep-anchor:focus-within .a3-gostep-tip{opacity:1;visibility:visible}
+@media (prefers-reduced-motion:reduce){.a3-gostep-tip{transition:none}}
+.a3-gostep-tip-head{font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--font-weight-bold)}
+.a3-gostep-tip-list{margin:0;padding-left:var(--space-4);display:grid;gap:var(--space-1);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+
+/* ── a3-docdrawer · the cited document, beside the claim ──────────────
+   A right-hand panel layer over the reading, not a second page: the scrim
+   pins it to the trailing edge at full height, the head carries the file's
+   identity and the close control, and the viewer inside is the SAME
+   `.a3-docsrc` the Documents register renders — one document surface, two
+   places that show it.
+   Classes: .a3-docdrawer-scrim · .a3-docdrawer · .a3-docdrawer-head ·
+   .a3-docdrawer-title. */
+.a3-docdrawer-scrim{align-items:stretch;justify-content:flex-end;padding:0}
+.a3-docdrawer{background:var(--color-surface-default);border-left:var(--border-contrast-2px);inline-size:min(680px,100vw);max-inline-size:100vw;block-size:100vh;overflow-y:auto;padding:var(--space-4);display:grid;gap:var(--space-3);align-content:start;z-index:var(--layer-dialog)}
+.a3-docdrawer-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-3);min-width:0}
+.a3-docdrawer-title{margin:0;font-size:var(--type-heading-3-size);line-height:var(--type-heading-3-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto;min-width:0}
+
+/* The one ACT on an evidence row, ranked above the citation beside it:
+   the SAME caption size as the source link — rank carried by weight and
+   the action accent alone, not by a second size step (orange.700 as ink — never the brand
+   orange, which rule 5 reserves for the hero metric). Rule 9 holds: this fragment is
+   emphasised ONE way — the colour — with weight and underline carrying
+   the affordance, not a second highlight. */
+.a3-evitem-verify{justify-self:start;background:transparent;border:0;padding:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-bold);color:var(--color-text-action);text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset);cursor:pointer;position:relative}
+.a3-evitem-verify:hover{color:var(--color-action-primary-hover)}
+.a3-docdrawer-confirm{display:grid;gap:var(--space-3);justify-items:start;border-top:var(--border-contrast-1px);padding-top:var(--space-3)}
+/* The decision row: agreeing and disagreeing stand side by side, and the
+   manual form REPLACES them rather than joining them, so only one act is
+   ever live. */
+.a3-docdrawer-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3);min-width:0}
+.a3-docdrawer-field{display:grid;gap:var(--space-2);justify-items:start;min-width:0}
+.a3-docdrawer-field-label{font-size:var(--type-label-size);line-height:var(--type-label-line);font-weight:var(--type-label-weight);color:var(--color-text-primary)}
+.a3-docdrawer-field-hint{margin:0;max-inline-size:56ch;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+/* A TEXT field, not a money cell. The canonical `.a3-input` sets a 10ch
+   right-aligned box because it was built for figures read in a column; here
+   the reader is typing one value into a sentence, so the entry starts at the
+   left edge and the unit sits at the field's own right edge instead of
+   floating a fixed distance from a right-aligned caret — which is the gap
+   that read as a hole. Scoped to this field: nothing in the money columns
+   changes. */
+.a3-docdrawer-field .a3-input{inline-size:min(100%,22ch)}
+.a3-docdrawer-field .a3-input input{flex:1 1 auto;inline-size:auto;min-inline-size:0;text-align:start;padding-inline-end:var(--space-2)}
+.a3-docdrawer-field .a3-input .a3-unit{margin-inline-start:auto}
+/* Shown only after a press on an empty field, so it is an answer and not a
+   standing instruction. Colour is not the signal — the words are, and the
+   field carries `aria-invalid` for the reader who hears neither. */
+.a3-docdrawer-field-error{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-status-error)}
+/* The drawer's close control is a square glyph target, not a labelled
+   button: the accessible name is still the word «Schließen» / «Close». */
+.a3-docdrawer-close{flex:none;inline-size:var(--size-hit-target-default);min-inline-size:var(--size-hit-target-default);block-size:var(--size-hit-target-default);padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:var(--type-heading-3-size);line-height:1}
+
+/* ── Navigation v2: ONE vertical rail for the whole journey ──────────────
+   Structure: .a3-journey-rail > .a3-journey-rail-name +
+   .a3-wfn.a3-wfn-vertical
+   Classes: .a3-journey-rail · .a3-journey-rail-name ·
+   .a3-navvariant-control · .a3-wfn-vertical
+
+   The rail is a COLUMN OF ITS OWN and never a flex item that can be
+   squeezed: `flex:none` plus a fixed inline size is what keeps a long
+   German label from pushing the workspace, and `min-inline-size:0` on every
+   text node inside it is what keeps the label from leaving the column. The
+   released horizontal rail sets `white-space:nowrap` on all four text
+   classes — correct in a row of equal columns, wrong in a 208 px column —
+   so the vertical variant unsets it and wraps by rule 37 instead
+   (`overflow-wrap`, `hyphens:auto`), with no fixed height anywhere: FR/ES
+   run up to +35 % longer than German (rule 36) and the rows grow.
+
+   It scrolls INSIDE ITSELF (`position:sticky` + `overflow-y:auto`) rather
+   than with the page: the whole point of `v2` is a map that stays readable
+   while the work beside it scrolls, and the retired thirteen-row spine's
+   real defect was that it was 2.21 viewports tall — a map you had to scroll
+   away from the work to read. */
+.a3-journey-rail{flex:none;inline-size:var(--panel-journey-rail-width);min-inline-size:0;align-self:stretch;position:sticky;top:0;max-block-size:100%;overflow-y:auto;overflow-x:hidden;padding:var(--space-4) var(--space-3);border-right:var(--border-hairline);background:var(--color-surface-default)}
+/* The project's name is the rail's own heading — no eyebrow above it: the
+   word `PROJEKT` labelled a column whose content already says what it is,
+   and the `<aside>` keeps `Projekt` as its accessible name. */
+.a3-journey-rail-name{margin:0 0 var(--space-3);font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:anywhere;hyphens:auto;min-width:0}
+/* `v4` — the Option's own block. The steps under this heading belong to the
+   Option it names, not to the project above it; the named heading and its
+   disclosure carry that, so the block needs no rule drawn beside it. */
+.a3-journey-option{margin-block-start:var(--space-3)}
+.a3-journey-option-head{margin:0 0 var(--space-2)}
+.a3-journey-option-toggle{display:flex;align-items:center;gap:var(--space-2);inline-size:100%;appearance:none;background:none;border:0;padding:0;font:inherit;color:inherit;text-align:start;cursor:pointer;position:relative}
+.a3-journey-option-chevron{flex:0 0 auto;inline-size:var(--size-icon-sm);block-size:var(--size-icon-sm);color:var(--color-text-secondary);transition:transform var(--motion-feedback) var(--motion-easing-standard)}
+.a3-journey-option-chevron[data-open]{transform:rotate(90deg)}
+.a3-journey-option-name{font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;min-width:0}
+.a3-journey-option:not([data-current]) .a3-journey-option-name{font-weight:var(--font-weight-medium);color:var(--color-text-secondary)}
+@media (prefers-reduced-motion:reduce){.a3-journey-option-chevron{transition:none}}
+.a3-wfn-vertical{inline-size:100%;min-width:0;border-bottom:0}
+.a3-wfn-vertical .a3-wfn-list{display:grid;grid-template-columns:minmax(0,1fr);gap:0;max-inline-size:none;margin-inline:0;border-top:var(--border-hairline)}
+.a3-wfn-vertical .a3-wfn-stage{flex:none;min-width:0;border-bottom:var(--border-hairline)}
+.a3-wfn-vertical .a3-wfn-button,.a3-wfn-vertical .a3-wfn-static{align-items:flex-start;inline-size:100%;min-block-size:var(--size-hit-target-default);padding:var(--space-2);border-bottom:0;border-inline-start:var(--border-width-strong) solid transparent}
+.a3-wfn-vertical .a3-wfn-current > .a3-wfn-button,.a3-wfn-vertical .a3-wfn-current > .a3-wfn-static{border-bottom-color:transparent;border-inline-start-color:var(--color-brand-accent);background:var(--color-surface-emphasis-warm)}
+.a3-wfn-vertical .a3-wfn-label,.a3-wfn-vertical .a3-wfn-state,.a3-wfn-vertical .a3-wfn-sublabel,.a3-wfn-vertical .a3-wfn-substate{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;hyphens:auto}
+/* The members of the current stage, indented under it — one column, the
+   marker's width plus its gap, so a member reads as belonging to the stage
+   above it and not as a stage of its own. */
+.a3-wfn-vertical .a3-wfn-sub{display:grid;grid-template-columns:minmax(0,1fr);gap:0;max-inline-size:none;margin-inline:0;padding:0 var(--space-2) var(--space-2) calc(var(--space-5) + var(--space-2));border-top:var(--border-hairline)}
+.a3-wfn-vertical .a3-wfn-subbutton,.a3-wfn-vertical .a3-wfn-substatic{flex-direction:column;align-items:flex-start;gap:0;inline-size:100%;min-block-size:var(--size-hit-target-default);justify-content:center}
+
+/* The single-building base strip inside Leistungsabgrenzung: one line of
+   fact and one route back to it, on the same baseline. Not a card and not a
+   status — the fact is settled, and a box around it would claim attention
+   the first real decision below it needs.
+   Classes: .a3-abgrenzung-base · .a3-abgrenzung-base-fact */
+.a3-abgrenzung-base{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3);margin-bottom:var(--space-4);padding-bottom:var(--space-2);border-bottom:var(--border-hairline);min-width:0}
+.a3-abgrenzung-base-fact{margin:0;min-width:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);overflow-wrap:anywhere}
+

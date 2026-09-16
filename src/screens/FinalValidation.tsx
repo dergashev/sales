@@ -26,7 +26,14 @@ import {
   type ReviewSectionId,
   type ReviewStage,
 } from '../state/optionReview'
-import { KG_SCOPE_GROUPS, type KgScopeGroup } from '../engine/kgConfiguration'
+import {
+  KG_DECIDED_SCOPE_GROUPS,
+  chapterOf,
+  dependencySuspension,
+  isApplicable,
+  kgServiceAnswer,
+  type KgScopeGroup,
+} from '../engine/kgConfiguration'
 import { scopeSelectedIds, scopeBuilding, scopeMetricValue, selectedBgfRSTotal } from '../state/optionBuildingScope'
 import { optionCommercialProjection } from '../state/optionCommercialProjection'
 import { halfMonthsToMonths } from '../engine/schedule'
@@ -34,12 +41,11 @@ import { NNBSP, rateUnit } from '../engine/money'
 import { CONFIGURATOR_STEP } from '../state/chapters'
 import { localizeMoneyText, useT, useTx } from '../i18n'
 import { useLocalNumber } from '../lib/localNumber'
+import { kgAnswerText } from '../lib/kgAnswerText'
 import { Button } from '../components/primitives'
 import { ActionGate } from '../design-system/ActionGate'
 import { CommercialNumber } from '../design-system/CommercialNumber'
 import { SemanticStatus } from '../design-system/SemanticStatus'
-import { MediaFrame } from '../design-system/MediaFrame'
-import { projectAsset } from '../assets/project-media'
 import {
   ReviewIndex,
   ReviewSection,
@@ -106,7 +112,7 @@ export function FinalValidation() {
 
   if (!available) {
     return (
-      <div className="px-7 py-6">
+      <div className="py-6">
         <ActionGate
           status="locked"
           prerequisites={[{
@@ -131,12 +137,9 @@ export function FinalValidation() {
 
   // ── the saved state (T-033) ──────────────────────────────────────────
   if (saveStage === 'SAVED' && saved) {
-    const asset = projectAsset(
-      scopeBuilding(s, scopeSelectedIds(s)[0] ?? null)?.identityAssetId ?? '',
-    )
     const lockReason = clientModeLockReasonFor(s, s.activeOptionId)
     return (
-      <div className="px-7 py-6">
+      <div className="py-6">
         <SaveReceipt
           autoFocus={justSaved}
           eyebrow={t('vr3.save.receipt.eyebrow', { version: saved.version })}
@@ -182,17 +185,24 @@ export function FinalValidation() {
                 : 'vr3.save.receipt.row.clientLocked'),
             },
           ]}
-          unlock={clientAvailable
-            ? { tone: 'ok', label: t('vr3.save.unlock.available'), reason: t('vr3.save.unlock.availableReason') }
-            : {
-              tone: 'attention',
-              label: t('vr3.save.unlock.locked'),
-              reason: t(lockReason === 'projectionInvalid'
-                ? 'vr3.save.unlock.projectionInvalid'
-                : lockReason === 'projectionOutdated'
-                  ? 'vr3.save.unlock.projectionOutdated'
-                  : 'vr3.save.unlock.notSaved'),
-            }}
+          /*
+           * NUR DIE SPERRE SPRICHT NOCH (Owner, 17.09.2026).
+           *
+           * »Kundenmodus freigeschaltet« stand unmittelbar unter der Zeile
+           * `Kundenmodus · verfügbar` und über der Schaltfläche, die ihn
+           * öffnet — dieselbe Aussage dreimal. Der gesperrte Fall behält
+           * seinen Satz: ein Element, das nicht geht, muss sagen warum
+           * (Regel 12), und diese Begründung steht sonst nirgends.
+           */
+          unlock={clientAvailable ? undefined : {
+            tone: 'attention',
+            label: t('vr3.save.unlock.locked'),
+            reason: t(lockReason === 'projectionInvalid'
+              ? 'vr3.save.unlock.projectionInvalid'
+              : lockReason === 'projectionOutdated'
+                ? 'vr3.save.unlock.projectionOutdated'
+                : 'vr3.save.unlock.notSaved'),
+          }}
           actions={(
             <>
               <Button
@@ -208,16 +218,6 @@ export function FinalValidation() {
               </Button>
             </>
           )}
-          media={asset ? (
-            <MediaFrame
-              ratio="card"
-              state="loaded"
-              src={asset.url}
-              alt={t(asset.altKey)}
-              seed={saved.optionId}
-              sourceId={asset.assetId}
-            />
-          ) : undefined}
         />
         {unsaved && (
           // A post-save working edit NEVER moves the saved baseline (M-3).
@@ -261,6 +261,67 @@ export function FinalValidation() {
   const monthsLabel = (halfMonths: number) =>
     `${num(halfMonthsToMonths(halfMonths).toString(), halfMonths % 2 === 0 ? 0 : 1)}${NNBSP}`
     + t(halfMonths === 2 ? 'vr3.schedule.unit.month' : 'vr3.schedule.unit.months')
+
+  /**
+   * The decisions behind one KG chapter's summary line — name, current
+   * answer, and the route to the control that owns it.
+   *
+   * `undefined` where the chapter cannot be enumerated at all (no
+   * catalogue, no configuration): a disclosure that opens on nothing is
+   * worse than the sentence alone.
+   */
+  const kgDecisionDetails = (sectionId: ReviewSectionId, group: KgScopeGroup) => {
+    const catalogue = kgCatalogueFor(s)
+    const decisions = s.kgConfig
+    if (!catalogue || !decisions) return undefined
+    const chapterData = chapterOf(catalogue, group)
+    if (!chapterData) return undefined
+    /**
+     * EXACTLY the set the sentence counts over — `kgChapterProgress` reads
+     * the chapter's live services, and so does this. A decision a cascade
+     * has suspended is not outstanding work and appears in neither.
+     *
+     * A service the project makes moot stays in the list and says so: it is
+     * part of what the chapter decided, and dropping it would leave a list
+     * shorter than the count above it. It carries NO edit button, because
+     * there is no control to route to — rule 12's "a blocked element says
+     * why" is served by the reason standing in the value.
+     */
+    const services = chapterData.groups
+      .flatMap((systemGroup) => systemGroup.services)
+      .filter((service) => dependencySuspension(catalogue, decisions, service) === null)
+    if (services.length === 0) return undefined
+    return {
+      expandLabel: t('vr3.review.details.expand', { label: t('vr3.review.row.services') }),
+      collapseLabel: t('vr3.review.details.collapse', { label: t('vr3.review.row.services') }),
+      items: services.map((service) => {
+        const applicable = isApplicable(service)
+        return {
+          id: service.id,
+          label: s.uiLanguage === 'en' ? service.labelEn : service.labelDe,
+          /* `nicht anwendbar` is a statement about the project, in the
+             product's own word — not a tone. `SemanticStatus` has no
+             not-applicable tone, and borrowing `neutral` would announce
+             "nothing has happened yet" for something that is settled. The
+             WHY stays where it can be read in full: the chapter's own
+             `Warum?` disclosure on that row. */
+          value: applicable
+            ? kgAnswerText(
+              kgServiceAnswer(catalogue, decisions, service, s.uiLanguage), s.uiLanguage, t,
+            )
+            : t('vr3.tga.notApplicable'),
+          ...(applicable
+            ? {
+              edit: {
+                label: t('vr3.review.details.edit'),
+                onSelect: () => s.openKgServiceDecision(sectionId, group, service.id),
+              },
+            }
+            : {}),
+        }
+      }),
+    }
+  }
 
   const rowsFor = (sectionId: ReviewSectionId) => {
     if (sectionId === 'projectBaseline') {
@@ -310,7 +371,8 @@ export function FinalValidation() {
       ]
     }
     if (sectionId === 'scopeDecisions') {
-      return KG_SCOPE_GROUPS.map((group) => ({
+      // The decisions a person took — the baseline groups are not among them.
+      return KG_DECIDED_SCOPE_GROUPS.map((group) => ({
         id: group,
         label: `KG${NNBSP}${group.slice(3)}`,
         value: t(`vr3.review.value.scope.${s.kgConfig?.scope[group] ?? 'undecided'}`),
@@ -344,6 +406,39 @@ export function FinalValidation() {
             settled: responsibility.media.length - responsibility.unresolved.length,
             total: responsibility.media.length,
           }),
+          /**
+           * `2 von 4 geklärt` is the same kind of sentence as the KG
+           * chapters': a count over a list the reader cannot see. The media
+           * are real per-medium states, so the row opens to name them.
+           *
+           * Their route is the STEP that owns them, not the individual row:
+           * the responsibility step has no per-medium landing, and inventing
+           * one here would be a second navigation contract. The button says
+           * so by going where the section's own route goes.
+           */
+          details: {
+            expandLabel: t('vr3.review.details.expand', {
+              label: t('vr3.review.row.connections'),
+            }),
+            collapseLabel: t('vr3.review.details.collapse', {
+              label: t('vr3.review.row.connections'),
+            }),
+            items: responsibility.media.map((medium) => ({
+              id: medium.id,
+              label: en ? medium.labelEn : medium.labelDe,
+              value: (
+                <SemanticStatus
+                  size="compact"
+                  tone={medium.status === 'ok' ? 'ok' : 'attention'}
+                  label={t(`vr3.responsibility.status.${medium.status}`)}
+                />
+              ),
+              edit: {
+                label: t('vr3.review.details.edit'),
+                onSelect: () => s.openReviewIssueRoute('responsibility'),
+              },
+            })),
+          },
         },
         {
           id: 'costAuthority',
@@ -516,6 +611,21 @@ export function FinalValidation() {
             required: chapter.requiredDecisions,
           })
           : t('vr3.review.value.absent'),
+        /**
+         * The sentence STAYS and opens (owner, 16.09.2026).
+         *
+         * `22 gewählt · 2 von 2 entschieden` counts decisions the reader
+         * could not see from here. The list under it names each one and its
+         * current answer — read through the ONE engine reading every other
+         * surface uses (`kgServiceAnswer`), never recomputed here — and
+         * every entry carries the route to its own control.
+         *
+         * The set is exactly the set the sentence counts over: the
+         * chapter's live, applicable services. A decision a cascade has
+         * suspended is not outstanding work and is not listed, for the same
+         * reason `kgChapterProgress` does not count it.
+         */
+        details: kgDecisionDetails(sectionId, group),
       },
       {
         id: 'amount',
@@ -565,36 +675,23 @@ export function FinalValidation() {
         rows={rowsFor(definition.id)}
         issues={issues}
         focused={s.reviewFocusSectionId === definition.id}
-        acknowledge={blocked ? undefined : (
-          <>
-            {/* SECONDARY, twelve times over. A long review has exactly one
-                primary action — the confirmation in the dock at its end —
-                and twelve orange buttons down a scrolling document would
-                make the page shout its own furniture instead of its
-                content. */}
-            <Button
-              variant="secondary"
-              disabled={state === 'REVIEWED'}
-              disabledReason={state === 'REVIEWED'
-                ? t('vr3.review.action.alreadyReviewed')
-                : undefined}
-              onClick={() => s.acknowledgeReviewSection(definition.id)}
-            >
-              {t(state === 'STALE'
-                ? 'vr3.review.action.reviewAgain'
-                : 'vr3.review.action.review')}
-            </Button>
-            {state !== 'REVIEWED' && (
-              <Button
-                variant="ghost"
-                onClick={() => s.openReviewIssueRoute(definition.id)}
-              >
-                {t('vr3.review.action.openStage', {
-                  stage: t(`vr3.review.stage.${definition.route}`),
-                })}
-              </Button>
-            )}
-          </>
+        /* EINE Bestätigung für den ganzen Bogen, unten im Dock.
+           Zwölf gleich aussehende Knöpfe den Bogen hinunter waren Möblierung,
+           kein Fortschritt: welcher davon der nächste war, stand ohnehin nur
+           im Dock. Die Prüfung selbst bleibt abschnittsweise — der Knopf
+           unten bestätigt genau den Abschnitt, den das Dock benennt, und
+           rückt dann zum nächsten. Der Weg in die Stufe, die einen Befund
+           behebt, bleibt HIER: er gehört zum Befund und nicht zum
+           Fortschritt. */
+        acknowledge={state === 'REVIEWED' || blocked ? undefined : (
+          <Button
+            variant="ghost"
+            onClick={() => s.openReviewIssueRoute(definition.id)}
+          >
+            {t('vr3.review.action.openStage', {
+              stage: t(`vr3.review.stage.${definition.route}`),
+            })}
+          </Button>
         )}
       />
     )
@@ -620,12 +717,6 @@ export function FinalValidation() {
       label: t(group.titleKey),
       state: worst,
       stateLabel: t(`vr3.review.state.${worst}`),
-      count: group.sectionIds.length > 1
-        ? {
-          reviewed: states.filter((state) => state === 'REVIEWED').length,
-          total: group.sectionIds.length,
-        }
-        : undefined,
       current: group.sectionIds.includes(s.reviewFocusSectionId ?? 'projectBaseline')
         && s.reviewFocusSectionId !== null,
       /**
@@ -653,11 +744,10 @@ export function FinalValidation() {
   })
 
   return (
-    <div className="px-7 py-6">
+    <div className="py-6">
       {/* The one learned stage header again — position, name, lead, state. */}
       <div className="a3-kgp-head">
         <div className="a3-kgp-identity">
-          <p className="a3-cap">{t('vr3.review.eyebrow', { count: progress.total })}</p>
           <h1 className="a3-kgp-title" data-page-heading tabIndex={-1} ref={heading}>
             {t(stage === 'CONFIRMED' || stage === 'READY'
               ? 'vr3.review.heading.ready'
@@ -693,9 +783,6 @@ export function FinalValidation() {
           <ReviewIndex
             label={t('vr3.review.indexLabel')}
             entries={entries}
-            progressLabel={t('vr3.review.status.progress', {
-              reviewed: progress.reviewed, total: progress.total,
-            })}
           />
         )}
         sections={sections}
@@ -734,6 +821,15 @@ export function FinalValidation() {
                   />
                 </div>
                 <div className="a3-rvs-ack">
+                  {/* Der Sammelknopf „alle Abschnitte geprüft" ist fort
+                      (Owner, 16.09.2026). Er war die Abkürzung um eine
+                      Vorbedingung herum, die es nicht mehr gibt: die Freigabe
+                      wartet nicht mehr darauf, dass jeder Abschnitt als
+                      gelesen vermerkt wurde. Ein Knopf, der einen ganzen
+                      Bogen als gelesen erklärt, ohne dass davon noch etwas
+                      abhängt, behauptet nur eine Lesehandlung. Der
+                      Abschnittsvermerk selbst bleibt, dort wo der Abschnitt
+                      steht. */}
                   <Button
                     variant={stage === 'CONFIRMED' ? 'secondary' : 'primary'}
                     disabled={!readyToConfirm}
@@ -754,50 +850,37 @@ export function FinalValidation() {
                   >
                     {t('vr3.review.action.confirm')}
                   </Button>
-                  <ActionGate
-                    status={saveStage === 'SAVING' ? 'busy'
-                      : saveStage === 'AVAILABLE' ? 'available' : 'locked'}
-                    prerequisites={saveStage === 'LOCKED' ? [{
-                      id: 'confirmation',
-                      label: t('vr3.save.prereq.confirmation'),
-                      met: false,
-                      // The three reasons are different, and saying the
-                      // wrong one is worse than saying none: findings,
-                      // sections still to read, and "everything is read,
-                      // the confirmation itself is what is missing" —
-                      // which is where a reader who has just finished
-                      // twelve sections actually stands.
-                      detail: progress.blockers.length > 0
-                        ? t('vr3.save.prereq.blockers', { count: progress.blockers.length })
-                        : progress.reviewed < progress.total
-                          ? t('vr3.save.prereq.outstanding', {
-                            count: progress.total - progress.reviewed,
-                          })
-                          : t('vr3.save.prereq.confirmationMissing'),
-                    }] : undefined}
-                    route={saveStage === 'LOCKED' && progress.outstanding.length > 0
-                      ? {
-                        label: t('vr3.save.route.section', {
-                          section: t(sectionTitleKey(progress.outstanding[0]!)),
-                        }),
-                        onSelect: () => {
-                          const first = progress.outstanding[0]!
-                          s.setReviewFocusSection(first)
-                          document.getElementById(`review-${first}-heading`)?.focus()
-                        },
-                      }
-                      : undefined}
+                  {/* Der Grund steht AM Knopf, nicht als Block darunter.
+                      Regel 12 verlangt, dass ein gesperrtes Element erklärt,
+                      warum — sie verlangt nicht, dass die Erklärung dauerhaft
+                      Platz einnimmt. Der stehende Kasten wiederholte, was das
+                      Dock links („als nächstes: …") und der Index oben
+                      („2 von 10 geprüft") ohnehin sagen, und der Weg zum
+                      offenen Abschnitt stand damit dreimal auf einem
+                      Bildschirm. Die drei Gründe bleiben getrennt: offene
+                      Befunde, ungelesene Abschnitte, und „alles gelesen, es
+                      fehlt die Freigabe" — der letzte ist der, vor dem
+                      jemand nach zehn Abschnitten tatsächlich steht. */}
+                  <Button
+                    variant="primary"
+                    disabled={saveStage !== 'AVAILABLE'}
+                    /* EIN Satz, und zwar der, der immer stimmt: gespeichert
+                       wird erst nach der Freigabe daneben — egal, ob noch
+                       Abschnitte offen sind, ein Befund im Weg steht oder
+                       nur die Freigabe selbst fehlt. Wie viele Abschnitte
+                       offen sind, steht ohnehin im Index und im Dock; hier
+                       stand es ein drittes Mal, und zwar als Grund für einen
+                       Knopf, der auch nach dem letzten Abschnitt noch
+                       gesperrt bliebe. */
+                    disabledReason={saveStage === 'AVAILABLE' || saveStage === 'SAVING'
+                      ? undefined
+                      : t('vr3.save.prereq.confirmFirst')}
+                    onClick={() => runSave(s)}
                   >
-                    <Button
-                      variant="primary"
-                      disabled={saveStage !== 'AVAILABLE'}
-                      onClick={() => runSave(s)}
-                    >
-                      {t(saveStage === 'SAVING'
-                        ? 'vr3.save.action.saving'
-                        : 'vr3.save.action.save')}
-                    </Button>
-                  </ActionGate>
+                    {t(saveStage === 'SAVING'
+                      ? 'vr3.save.action.saving'
+                      : 'vr3.save.action.save')}
+                  </Button>
                 </div>
               </>
             )}
@@ -837,9 +920,32 @@ const REVIEW_BLOCKED_REASON_KEY: Readonly<Record<ReviewStage, string>> = {
  * save and Option creation before it — and because the reserved number is
  * what makes a retry idempotent.
  */
+/**
+ * Save, and then GO — the receipt is not a station on the way (owner's
+ * decision, 15.09).
+ *
+ * The save produced exactly one thing the seller now needs: a client
+ * baseline. `Präsentieren` is where that baseline is used, it already states
+ * the saved version, its total and its saved-at, and it carries the only
+ * door into the client projection — so landing on a page whose own primary
+ * action was "go there" made the last step of the workflow a page the reader
+ * had to click through. The route is taken for them.
+ *
+ * Read against the store AFTER the attempt, never against the snapshot this
+ * was called with: `advanceOptionSave` refuses the save on a race (an edit
+ * in flight, a switched Option) and records the failure instead, and routing
+ * away from that failure would hide it on the surface that reports it.
+ *
+ * The receipt is untouched and stays the surface of the `Speichern` step:
+ * coming back to it is how the seller reads WHAT was saved, including the
+ * one thing that exists nowhere else — a working copy that has since moved
+ * past the saved version (M-3).
+ */
 function runSave(s: ReturnType<typeof useStore.getState>) {
   s.beginOptionSave()
   s.advanceOptionSave()
+  const after = useStore.getState()
+  if (optionSaveStageFor(after) === 'SAVED') after.setPipelineView('praesentieren')
 }
 
 function sectionTitleKey(id: ReviewSectionId): string {

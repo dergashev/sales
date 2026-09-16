@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { SemanticStatus, type SemanticStatusTone } from './SemanticStatus'
 
 /**
@@ -44,8 +44,6 @@ export type ReviewIndexEntry = {
   /** The worst state among the sections beneath this entry. */
   state: ReviewSectionState
   stateLabel: string
-  /** How many sections this entry stands for, when it stands for several. */
-  count?: { reviewed: number; total: number }
   onSelect: () => void
   /** `true` while the reader is inside this entry's sections. */
   current?: boolean
@@ -57,15 +55,24 @@ export type ReviewIndexEntry = {
  * compete with the document for the reader's eye, which is the "competing
  * sticky regions" the `ContextRail` contract forbids.
  */
-export function ReviewIndex({ label, entries, progressLabel }: {
+/*
+ * Der Zählstand steht NICHT mehr über dem Index (Owner, 16.09.2026).
+ * „0 von 10 geprüft" war der dritte Ort derselben Aussage: der Status am
+ * Bogenkopf sagt sie, jeder Eintrag trägt seinen eigenen Zustand, und der
+ * Index ist eine Wegliste, keine Fortschrittsanzeige. Die Zahl selbst ist
+ * nicht verschwunden — `vr3.review.status.progress` steht weiterhin am
+ * Kopf des Bogens.
+ *
+ * Aus demselben Grund trägt ein Eintrag seit dem 16.09.2026 auch keinen
+ * eigenen Zählstand („0/3") mehr: er stand neben dem Zustand, den derselbe
+ * Eintrag bereits führt, und zählte dieselben Abschnitte ein viertes Mal.
+ */
+export function ReviewIndex({ label, entries }: {
   label: string
   entries: readonly ReviewIndexEntry[]
-  /** e.g. "9 von 12 geprüft". The count, not a percentage. */
-  progressLabel: string
 }) {
   return (
     <nav className="a3-rvi" aria-label={label}>
-      <p className="a3-rvi-progress">{progressLabel}</p>
       <ul className="a3-rvi-list">
         {entries.map((entry) => (
           <li key={entry.id} className="a3-rvi-item">
@@ -75,21 +82,22 @@ export function ReviewIndex({ label, entries, progressLabel }: {
               aria-current={entry.current ? 'true' : undefined}
               onClick={entry.onSelect}
             >
+              {/* Der unberührte Zustand trägt KEIN Zeichen mehr. Ein Kreis
+                  vor jedem noch nicht gelesenen Abschnitt sagte nichts, was
+                  das Fehlen des Hakens nicht schon sagt, und in einer
+                  langen Liste war er die auffälligste Marke von allen. Die
+                  Spalte bleibt reserviert, damit das Erscheinen des Hakens
+                  die Beschriftungen nicht verschiebt (Regel 24). */}
               <span className="a3-rvi-state" aria-hidden="true">
                 {entry.state === 'REVIEWED' ? '✓'
                   : entry.state === 'ISSUE' ? '!'
-                    : entry.state === 'STALE' ? '▲' : '○'}
+                    : entry.state === 'STALE' ? '▲' : ''}
               </span>
               <span className="a3-rvi-label">{entry.label}</span>
               {/* The state travels in the accessible name, not in the glyph:
                   a tick nobody can hear is colour-only meaning with extra
                   steps (rule 8). */}
               <span className="sr-only">{` · ${entry.stateLabel}`}</span>
-              {entry.count && (
-                <span className="a3-rvi-count numeric">
-                  {`${entry.count.reviewed}/${entry.count.total}`}
-                </span>
-              )}
             </button>
           </li>
         ))}
@@ -105,6 +113,129 @@ export type ReviewSectionIssue = {
   reason?: string
   /** The exact edit route. An issue without one is a dead end. */
   route?: { label: string; onSelect: () => void }
+}
+
+/**
+ * One item behind a summary row: a real decision, its current answer, and
+ * the route to the control that owns it.
+ */
+export type ReviewSectionDetailItem = Readonly<{
+  id: string
+  label: string
+  value: ReactNode
+  /**
+   * The exact edit route of THIS item. Absent where the product has no
+   * control to route to — the item is then read-only in the review, and
+   * shows nothing rather than a button that would go nowhere.
+   */
+  edit?: Readonly<{ label: string; onSelect: () => void }>
+}>
+
+/**
+ * THE SUMMARY STAYS, AND OPENS (owner, 16.09.2026).
+ *
+ * `22 gewählt · 2 von 2 entschieden` is a true sentence about a list nobody
+ * could see: the reader had to leave the review, find the chapter, and open
+ * each system to learn WHICH services are in it. `details` adds the list
+ * under the sentence — it never replaces it, because the count is what
+ * makes the section scannable and the list is what makes it checkable.
+ */
+export type ReviewSectionRowDetails = Readonly<{
+  /** Announced on the toggle in place of a bare chevron: it names what opens. */
+  expandLabel: string
+  collapseLabel: string
+  items: readonly ReviewSectionDetailItem[]
+}>
+
+export type ReviewSectionRow = Readonly<{
+  id: string
+  label: string
+  value: ReactNode
+  details?: ReviewSectionRowDetails
+}>
+
+/**
+ * A summary row that opens.
+ *
+ * THE TOGGLE IS THE ROW'S VALUE, not a chevron beside it: the sentence a
+ * reader wants to open is the sentence they point at. It is a real
+ * `<button>` with `aria-expanded`/`aria-controls` (rule 22), the disclosure
+ * state is this component's own — nothing about a reading posture belongs in
+ * the journal or the store (M-4) — and `Esc` closes the list and returns
+ * focus to the toggle, so the keyboard has the same way out as the pointer.
+ *
+ * EVERY ITEM'S EDIT BUTTON IS ALWAYS IN THE DOM AND ALWAYS FOCUSABLE. It is
+ * revealed by pointer hover, by focus inside its own row, and unconditionally
+ * where the device has no hover at all (`@media (hover: none)`) — a control
+ * that only appears under a mouse pointer does not exist for a keyboard or a
+ * touch screen. Its column is reserved whether it is visible or not, so
+ * revealing it moves nothing (rule 24).
+ */
+function ReviewSectionDetailRow({ row, details }: {
+  row: ReviewSectionRow
+  details: ReviewSectionRowDetails
+}) {
+  const [open, setOpen] = useState(false)
+  const toggleRef = useRef<HTMLButtonElement>(null)
+  const listId = `${useId()}-details`
+  return (
+    <div className="a3-rvs-row a3-rvs-row-open" data-open={open ? 'true' : 'false'}>
+      <dt>{row.label}</dt>
+      <dd>
+        <button
+          type="button"
+          ref={toggleRef}
+          className="a3-rvs-disclose hit-target"
+          aria-expanded={open}
+          aria-controls={listId}
+          onClick={() => setOpen((current) => !current)}
+        >
+          <span className="a3-rvs-disclose-value">{row.value}</span>
+          {/* The glyph is decorative; the state travels in `aria-expanded`
+              and the action in the accessible name (rule 8). */}
+          <span className="a3-rvs-disclose-mark" aria-hidden="true">{open ? '−' : '+'}</span>
+          <span className="sr-only">{` · ${open ? details.collapseLabel : details.expandLabel}`}</span>
+        </button>
+        <div
+          id={listId}
+          className="a3-rvs-details"
+          hidden={!open}
+          onKeyDown={(event) => {
+            if (event.key !== 'Escape') return
+            event.stopPropagation()
+            setOpen(false)
+            toggleRef.current?.focus()
+          }}
+        >
+          <ul className="a3-rvs-detail-list">
+            {details.items.map((item) => (
+              <li key={item.id} className="a3-rvs-detail">
+                <span className="a3-rvs-detail-label">{item.label}</span>
+                <span className="a3-rvs-detail-value">{item.value}</span>
+                <span className="a3-rvs-detail-action">
+                  {item.edit && (
+                    <button
+                      type="button"
+                      className="a3-rvs-edit hit-target"
+                      onClick={item.edit.onSelect}
+                    >
+                      {item.edit.label}
+                      {/* `Bearbeiten` five times in a list is five buttons
+                          with the same accessible name. The item's own name
+                          travels with it, unheard by the eye and read by the
+                          screen reader — the same device the index uses for
+                          its state. */}
+                      <span className="sr-only">{` · ${item.label}`}</span>
+                    </button>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </dd>
+    </div>
+  )
 }
 
 /**
@@ -124,7 +255,7 @@ export function ReviewSection({
   title: string
   state: ReviewSectionState
   stateLabel: string
-  rows?: readonly { id: string; label: string; value: ReactNode }[]
+  rows?: readonly ReviewSectionRow[]
   issues?: readonly ReviewSectionIssue[]
   acknowledge?: ReactNode
   children?: ReactNode
@@ -175,16 +306,35 @@ export function ReviewSection({
         >
           {title}
         </h3>
-        <SemanticStatus tone={STATE_TONE[state]} label={stateLabel} size="compact" />
+        {/*
+          * DER RUHIGE ZUSTAND TRÄGT KEIN ABZEICHEN MEHR (Owner, 16.09.2026).
+          *
+          * „noch zu prüfen" stand an jedem ungelesenen Abschnitt und sagte
+          * nur, dass der Leser noch nicht unten angekommen ist — dreizehn
+          * Mal dasselbe. Ein Befund und ein veralteter Abschnitt behalten
+          * ihr Abzeichen: dort ist der farbige Rand sonst der einzige
+          * Träger der Aussage, und Zustand allein durch Farbe ist verboten
+          * (Regel 8). Für die Vorlesesoftware bleibt der Zustand in jedem
+          * Fall am Abschnitt.
+          */}
+        {state === 'ISSUE' || state === 'STALE' ? (
+          <SemanticStatus tone={STATE_TONE[state]} label={stateLabel} size="compact" />
+        ) : (
+          <span className="sr-only">{stateLabel}</span>
+        )}
       </div>
 
       {rows && rows.length > 0 && (
         <dl className="a3-rvs-rows">
           {rows.map((row) => (
-            <div key={row.id} className="a3-rvs-row">
-              <dt>{row.label}</dt>
-              <dd>{row.value}</dd>
-            </div>
+            row.details
+              ? <ReviewSectionDetailRow key={row.id} row={row} details={row.details} />
+              : (
+                <div key={row.id} className="a3-rvs-row">
+                  <dt>{row.label}</dt>
+                  <dd>{row.value}</dd>
+                </div>
+              )
           ))}
         </dl>
       )}

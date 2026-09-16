@@ -28,6 +28,18 @@ const FOCUS_RING =
 export type Segment<T extends string> = {
   value: T
   label: string
+  /**
+   * Что это за значение — рядом с ним, но не как часть его.
+   *
+   * Изменение контракта 16.09.2026. Подпись сегмента была одной строкой,
+   * поэтому квалификатор («neuere Quelle», «ersetzt») приходилось вклеивать
+   * в ту же строку — и он читался как продолжение самого значения:
+   * «19.710 m² · ältere Quelle» выглядит как одна величина из четырёх слов.
+   * Вторая, приглушённая строка снимает это, ничего не пряча: текст
+   * остаётся видимым и переводимым, различает его типографика, а не цвет
+   * (правило 8 — статус здесь не передаётся вовсе, это разряд подписи).
+   */
+  detail?: string
   disabled?: boolean
   /** Недоступный сегмент существует только вместе с видимой причиной. */
   disabledReason?: string
@@ -43,7 +55,7 @@ export type Segment<T extends string> = {
  */
 export function SegmentedControl<T extends string>({
   legend, legendHidden = false, value, options, onChange, helperText, layout = 'stack',
-  size = 'default', disabled, disabledReason,
+  size = 'default', disabled, disabledReason, tokenLabels = false,
 }: {
   legend: string
   /**
@@ -70,6 +82,12 @@ export function SegmentedControl<T extends string>({
    * ровно тот дефект, ради запрета которого условие существует.
    */
   size?: 'default' | 'compact'
+  /**
+   * Подписи — непереводимые токены (≤ 3 знаков), поэтому допустимы 4+
+   * сегмента. См. проверку ниже: обещание проверяется, а не принимается
+   * на слово.
+   */
+  tokenLabels?: boolean
   /** Недоступность всей группы — только с видимой причиной (STATE-006). */
   disabled?: boolean
   disabledReason?: string
@@ -77,10 +95,34 @@ export function SegmentedControl<T extends string>({
   const name = useId()
   const descriptionId = useId()
   const groupRef = useRef<HTMLDivElement>(null)
-  if (options.length > 3) {
+  /**
+   * ПОЧЕМУ 4+ ЗАПРЕЩЕНО — и единственное исключение (изменение контракта
+   * 16.09.2026).
+   *
+   * LOCALE-004 запрещает четвёртый сегмент не из-за числа, а из-за ШИРИНЫ:
+   * подпись сегмента переводится, FR/ES длиннее немецкого до +35 % (правило
+   * 36), и четыре переводимые подписи в ряд рвут раскладку на первом же
+   * языке. Там, где подписи — НЕПЕРЕВОДИМЫЕ токены фиксированной длины
+   * (`v1`…`v4`, `1`…`4`), этого риска не существует, и запрет защищал бы от
+   * опасности, которой нет.
+   *
+   * Поэтому исключение называется по причине, а не по числу, и оно само
+   * себя проверяет: токен — это не более трёх знаков, и подпись длиннее
+   * падает ровно так же, как падал бы четвёртый переводимый сегмент.
+   */
+  if (options.length > 3 && !tokenLabels) {
     throw new Error(
       `SegmentedControl: ${options.length} сегментов — при 4+ значениях контракт требует <select> (LOCALE-004)`,
     )
+  }
+  if (tokenLabels) {
+    const tooLong = options.find((option) => option.label.length > 3)
+    if (tooLong) {
+      throw new Error(
+        `SegmentedControl: «${tooLong.label}» — tokenLabels обещает подписи `
+        + 'не длиннее трёх знаков; переводимая подпись требует <select> (LOCALE-004)',
+      )
+    }
   }
   const tx = useTx()
   const layoutClass = {
@@ -148,7 +190,12 @@ export function SegmentedControl<T extends string>({
               <span className="a3-segment-check" aria-hidden="true">
                 {active ? '✓' : ''}
               </span>
-              <span>{o.label}</span>
+              <span className="a3-segment-text">
+                {o.label}
+                {o.detail ? (
+                  <span className="a3-segment-detail">{o.detail}</span>
+                ) : null}
+              </span>
             </label>
           )
         })}
@@ -629,6 +676,51 @@ export function FacadeTileGroup({
  * `KG-700-Modus`. Позиция ползунка не единственный носитель — `stateText`
  * дублирует текстом (gate 7).
  */
+/**
+ * Checkbox — the bare, labelled box, for a cell in a long list.
+ *
+ * WHY IT EXISTS beside `CheckboxCard`. That one is a TILE: a card with a
+ * title, a consequence and a description, sized to be chosen from a small
+ * grid of options. It is the right control for four ways to build a facade
+ * and the wrong one for two hundred numbered contract positions, where the
+ * question is not «which of these» but «this one, yes or no», three times
+ * per row, and the label already exists as the row's own name.
+ *
+ * `label` is therefore the ACCESSIBLE name and is hidden by default: in a
+ * table the visible name is the column header plus the row header, and
+ * printing it a third time inside the cell is noise for the sighted reader
+ * and nothing for anybody else. Hidden is not absent — a checkbox whose
+ * name is only its position in a grid is a checkbox a screen-reader user
+ * cannot identify.
+ *
+ * The 44 px target is the `hit-target` contract (rule 23), which grows the
+ * PRESS area and not the box; consumers must keep neighbouring boxes at
+ * least 44 px apart, which is the R-04 condition, not a suggestion.
+ */
+export function Checkbox({ label, checked, onChange, labelVisible, disabled }: {
+  label: string
+  checked: boolean
+  onChange: (next: boolean) => void
+  /** Show `label` beside the box (outside a table, where there is no header). */
+  labelVisible?: boolean
+  disabled?: boolean
+}) {
+  const id = useId()
+  return (
+    <span className="a3-check">
+      <input
+        id={id}
+        type="checkbox"
+        className="a3-check-input hit-target"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.currentTarget.checked)}
+      />
+      <label htmlFor={id} className={labelVisible ? 'a3-check-label' : 'sr-only'}>{label}</label>
+    </span>
+  )
+}
+
 export function Switch({ label, checked, onChange, disabled, disabledReason, children }: {
   label: string
   checked: boolean

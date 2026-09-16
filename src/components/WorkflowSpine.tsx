@@ -12,7 +12,7 @@ import {
   responsibilityFor,
   useStore,
 } from '../state/store'
-import { KG_SCOPE_GROUPS, type KgScopeGroup } from '../engine/kgConfiguration'
+import { KG_DECIDED_SCOPE_GROUPS, type KgScopeGroup } from '../engine/kgConfiguration'
 import { buildingScopeStale } from '../state/optionBuildingScope'
 import {
   KG_STEP_ID,
@@ -78,14 +78,19 @@ import {
  * `current` while the user is in it (including on the comparison destination
  * it leads to) and `upcoming` before the first Option exists.
  */
-export function ProjectWorkflowNavigator({
-  project, analysis,
-}: {
-  project: FixtureProject
-  analysis: ProjectAnalysis
-}) {
+export function useProjectWorkflowStages(
+  /**
+   * `null` while no project is open — the rail asks before the store can
+   * answer. Hooks below run either way (they must), and the empty rail is a
+   * RESULT, not a second code path: nothing downstream renders stages that
+   * were never built.
+   */
+  input: { project: FixtureProject, analysis: ProjectAnalysis } | null,
+): WorkflowStage[] {
   const s = useStore()
   const t = useT()
+  if (!input) return []
+  const { project, analysis } = input
   const state = readiness(project, analysis)
   const stage = s.projectStage
   const analysed = analysis.jobState === 'COMPLETE'
@@ -138,12 +143,38 @@ export function ProjectWorkflowNavigator({
               count: state.unresolvedBlockingConflicts,
             })
             : t('vr3.spine.reason.needsReadiness'),
-      onSelect: canOpenOptions ? () => s.setProjectStage('options') : undefined,
+      // `openOptionsStage`, not a bare stage change: the collection creates
+      // its first Option on entry, and the rail must arrive the same way
+      // the CTA does or the two doors would show different screens.
+      onSelect: canOpenOptions ? () => s.openOptionsStage() : undefined,
       // Deliberately no nested steps: the Options collection is a list of
       // objects, not a sequence of steps, and its members are the rows.
     },
   ]
 
+  return stages
+}
+
+/**
+ * The project rail, horizontally — the `v1` navigation variant.
+ *
+ * It renders nothing under `v2`, where the same stages are drawn by the one
+ * vertical `JourneyRail` instead. Returning `null` here rather than removing
+ * the call site is what keeps ONE rail mounted at a time in both variants:
+ * the rule the 06.09 seam audit set is about how many navigations claim the
+ * journey at once, not about which file mounts them.
+ */
+export function ProjectWorkflowNavigator({
+  project, analysis,
+}: {
+  project: FixtureProject
+  analysis: ProjectAnalysis
+}) {
+  const s = useStore()
+  const t = useT()
+  const stages = useProjectWorkflowStages({ project, analysis })
+
+  if (s.navVariant !== 'v1') return null
   return <WorkflowNavigator stages={stages} ariaLabel={t('vr3.journey.label')} />
 }
 
@@ -163,7 +194,7 @@ export function ProjectWorkflowNavigator({
  * a stage here whose surface's ACTION enters that mode; `PresentationShell`,
  * the `mode` field and `setViewedOption` are untouched.
  */
-export function OptionWorkflowNavigator() {
+export function useOptionWorkflowStages(): WorkflowStage[] {
   const s = useStore()
   const t = useT()
   const here = destinationOfNav(s.pipelineView, s.openConfiguratorStep)
@@ -182,6 +213,25 @@ export function OptionWorkflowNavigator() {
    * unmodelled gate VR3-03 explicitly refused.
    */
   const decisionsComplete = kgScopeDecisionsComplete(s)
+  /**
+   * A SINGLE-BUILDING OPTION HAS NO `Gebäude & Umfang` STEP TO WALK.
+   *
+   * Its base is confirmed and saved with the Option itself (`createOption`,
+   * owner's decision 13.09), so the step would stand in the rail already
+   * `done`, permanently, pointing at a screen with one card and nothing to
+   * decide. Configure then has ONE member left, and a stage with one member
+   * is the stage — so the members disappear entirely and Configure leads
+   * straight to `Leistungsabgrenzung`.
+   *
+   * It comes BACK the moment the settlement stops being true: a stale scope
+   * (a metric edited after the save) or a gate that closed again restores
+   * both members, because then there IS something to walk. The screen itself
+   * is never removed — `Grundlage ändern` inside Leistungsabgrenzung still
+   * routes to it — only the permanent rail row is.
+   */
+  const singleBuilding = s.scopeBuildings.length === 1
+  const scopeSettled = gateOpen && !scopeStale
+  const collapseConfigure = singleBuilding && scopeSettled
   const kgComplete = kgConfigurationCompleteFor(s)
   /**
    * VR3-TGA-UX-00 — the responsibility step's state is DATA-DERIVED where the
@@ -195,7 +245,6 @@ export function OptionWorkflowNavigator() {
     .includes(CONFIGURATOR_STEP.RESPONSIBILITY)
   const responsibilitySettled = (responsibility?.unresolved.length ?? 0) === 0
   const scheduleConfirmed = s.scheduleConfirmation !== null
-  const reviewConfirmed = s.reviewConfirmation !== null
   const saveStage = optionSaveStageFor(s)
   const saved = saveStage === 'SAVED'
   /**
@@ -294,7 +343,10 @@ export function OptionWorkflowNavigator() {
       state: here.stage === 'konfigurieren'
         ? 'current'
         : gateOpen && boundariesConfirmed && !scopeStale ? 'done' : 'available',
-      onSelect: go({ stage: 'konfigurieren', step: 'gebaeude-umfang' }),
+      onSelect: go({
+        stage: 'konfigurieren',
+        step: collapseConfigure ? 'leistungsabgrenzung' : 'gebaeude-umfang',
+      }),
       /**
        * B2 · requirement 15 — the SAME secondary navigator as Calculate.
        *
@@ -305,7 +357,7 @@ export function OptionWorkflowNavigator() {
        * model and one state vocabulary across all three.
        */
       stepsPresentation: 'progression',
-      steps: [
+      steps: collapseConfigure ? undefined : [
         {
           ...step(
             'konfigurieren', 'gebaeude-umfang', t('nav.buildingScope'),
@@ -347,8 +399,10 @@ export function OptionWorkflowNavigator() {
       reason: !gateOpen
         ? t('vr3.spine.reason.needsBuildingScope')
         : decisionsComplete ? undefined : t('vr3.spine.reason.needsScopeDecisions'),
+      // The stage lands on the FIRST ASKED cost group, not on KG 200 —
+      // that page is no longer a step of this rail.
       onSelect: gateOpen && decisionsComplete
-        ? go({ stage: 'kalkulieren', step: KG_STEP_ID.KG_200 })
+        ? go({ stage: 'kalkulieren', step: KG_STEP_ID[KG_DECIDED_SCOPE_GROUPS[0]] })
         : undefined,
       /**
        * VR3-KG-UNIFY-00 — the eight calculation destinations are ONE ordered
@@ -359,7 +413,17 @@ export function OptionWorkflowNavigator() {
        */
       stepsPresentation: 'progression',
       steps: [
-        ...KG_SCOPE_GROUPS.map(kgStep),
+        /**
+         * THE RAIL LISTS THE COST GROUPS THE SELLER DECIDES AND CONFIGURES.
+         *
+         * KG 200, KG 500 and KG 600 are included by baseline and carry no
+         * open question (`initialDecisions`), so a row for each of them
+         * would be three permanently-finished steps between the three that
+         * are still work — the same ceremony the ledger just shed, moved
+         * into the navigation. Their amounts stay in the offer and in the
+         * cost detail, which is where a finished group belongs.
+         */
+        ...KG_DECIDED_SCOPE_GROUPS.map(kgStep),
         {
           ...step(
             'kalkulieren', 'verantwortung', t('vr3.spine.step.responsibility'),
@@ -409,33 +473,19 @@ export function OptionWorkflowNavigator() {
         : saved ? 'done' : reviewAvailable ? 'available' : 'locked',
       reason: reviewAvailable ? undefined : t('vr3.spine.reason.needsSchedule'),
       onSelect: reviewAvailable
-        ? go({ stage: 'pruefen', step: 'finale-pruefung' })
+        ? go({ stage: 'pruefen', step: null })
         : undefined,
-      // The same secondary navigator as Configure and Calculate (req 15).
-      stepsPresentation: 'progression',
-      steps: [
-        {
-          ...step(
-            'pruefen', 'finale-pruefung', t('vr3.spine.step.finalValidation'),
-            reviewConfirmed ? 'done' : 'available',
-          ),
-          shortLabel: t('vr3.progression.review'),
-        },
-        {
-          ...step(
-            'pruefen', 'speichern', t('vr3.journey.step.save'),
-            saveStage === 'SAVED'
-              ? 'done'
-              : saveStage === 'FAILED'
-                ? 'warning'
-                : reviewConfirmed ? 'available' : 'locked',
-            saveStage === 'FAILED'
-              ? t('vr3.spine.reason.saveFailed')
-              : t('vr3.spine.reason.needsReview'),
-          ),
-          shortLabel: t('vr3.progression.save'),
-        },
-      ],
+      /**
+       * No nested steps (Product Owner, 2026-09-16). The released rail split
+       * this stage into `Finale Prüfung` and `Speichern`, and the two were
+       * never two places: both members resolved to the SAME surface
+       * (`CONFIGURATOR_STEP.FINAL_VALIDATION`), so the secondary navigator
+       * published a sequence the user could not walk — pressing either row
+       * left them exactly where they already were. Checking and saving are
+       * one act on the review surface, which carries its own save control
+       * and its own reason when saving is not yet possible; the next place
+       * is the Präsentieren stage.
+       */
     },
     {
       id: 'praesentieren',
@@ -456,5 +506,14 @@ export function OptionWorkflowNavigator() {
     },
   ]
 
+  return stages
+}
+
+/** The Option rail, horizontally — `v1`. Silent under `v2`/`v3`, as above. */
+export function OptionWorkflowNavigator() {
+  const s = useStore()
+  const t = useT()
+  const stages = useOptionWorkflowStages()
+  if (s.navVariant !== 'v1') return null
   return <WorkflowNavigator stages={stages} ariaLabel={t('vr3.option.rail.label')} />
 }

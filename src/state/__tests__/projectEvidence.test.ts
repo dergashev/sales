@@ -3,7 +3,6 @@ import { demoProject } from '../projectAnalysis'
 import {
   DOWNSTREAM_REFS,
   EVIDENCE_GROUPS,
-  EVIDENCE_VISIBLE_MAX,
   evidenceCounts,
   evidenceForDownstream,
   evidenceGroupView,
@@ -11,12 +10,14 @@ import {
   evidenceItem,
   evidenceItems,
   evidenceSource,
+  isConfirmable,
   isDownstreamRef,
   isEvidenceAuthority,
   isEvidenceGroup,
   isEvidenceState,
   needsAttention,
   reconcileEvidenceCounts,
+  withEvidenceConfirmations,
 } from '../projectEvidence'
 import { documentAnchor } from '../../assets/document-media'
 
@@ -77,22 +78,35 @@ describe('the evidence register reconciles with itself', () => {
     }
   })
 
-  it('a group head shows at most four items and discloses the rest, losing none', () => {
+  it('a group shows every item it has — nothing is withheld', () => {
     for (const view of evidenceGroupViews(B)) {
-      expect(view.visibleCount).toBe(view.visible.length)
-      expect(view.visibleCount).toBeLessThanOrEqual(EVIDENCE_VISIBLE_MAX)
-      expect(view.visible.length + view.disclosed.length).toBe(view.total)
-      // `n / total` on the heading is the head, not a second register.
-      expect(view.visible.every((item) => item.impact === 'primary')).toBe(true)
+      expect(view.items.length).toBe(view.total)
       expect(view.attentionCount).toBeLessThanOrEqual(view.total)
     }
+  })
+
+  it('open items lead, and what was settled here stays right under them', () => {
+    const before = evidenceGroupView(B, 'geometry')
+    const open = before.items.filter((item) => isConfirmable(item))
+    expect(open.length).toBeGreaterThan(1)
+    // The first one is settled: it leaves the open block and lands directly
+    // beneath it, not at the position its fixture order would give it.
+    const settled = open[0]!
+    const after = evidenceGroupView(
+      withEvidenceConfirmations(B, { [settled.id]: { by: 'x', at: 'y' } }),
+      'geometry',
+      new Set([settled.id]),
+    )
+    const stillOpen = after.items.filter((item) => isConfirmable(item))
+    expect(after.items.indexOf(after.items.find((i) => i.id === settled.id)!))
+      .toBe(stillOpen.length)
+    expect(after.items.length).toBe(before.items.length)
   })
 
   it('an empty group is a fact, not a gap — Freiburg has no building services', () => {
     const tga = evidenceGroupView(A, 'tga')
     expect(tga.total).toBe(0)
-    expect(tga.visible).toEqual([])
-    expect(tga.disclosed).toEqual([])
+    expect(tga.items).toEqual([])
     // And the group still exists, so the page can say so rather than omit it.
     expect(evidenceGroupViews(A).map((v) => v.group)).toEqual([...EVIDENCE_GROUPS])
   })
@@ -160,7 +174,7 @@ describe('the downstream integration point later tickets consume', () => {
     // every one of them is offered to KG 400.
     const tga = evidenceGroupView(B, 'tga')
     expect(tga.total).toBeGreaterThan(0)
-    for (const item of tga.visible) expect(item.downstreamRefs).toContain('kg400')
+    for (const item of tga.items) expect(item.downstreamRefs).toContain('kg400')
   })
 
   it('an empty answer is the honest «no source requirement found»', () => {

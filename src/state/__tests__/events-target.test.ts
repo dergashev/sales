@@ -145,17 +145,14 @@ describe('эфемерное состояние принадлежит конт�
     expect(st().activeDelta).not.toBeNull()
     expect(st().undoToast).not.toBeNull()
 
-    // AUD-01 (EXP-01/EXP-02, live Playwright finding): hovering a genuine
-    // new option now dismisses the just-shown delta chip itself (preview
-    // > chip priority — the two used to be able to coexist, painting on
-    // top of each other in the same anchored slot; that WAS the bug).
-    // `activeDelta`/`preview` can no longer be simultaneously non-null,
-    // so this establishes `preview` fresh instead, and confirms it —
-    // like `activeDelta`/`undoToast` above — does not survive the option
-    // switch below either.
+    // PO, 16.09.2026: hover больше НЕ гасит только что показанный
+    // дельта-чип — они сосуществуют, а перекрытие решено слоем в одной
+    // ячейке зарезервированного слота (результат клика над превью).
+    // Предмет этого теста другой: ни одно из эфемерных состояний не
+    // переживает переключение Option ниже.
     st().previewOption({ kind: 'coverage', group: 'KG_500', value: 'included' })
     expect(st().preview).not.toBeNull()
-    expect(st().activeDelta).toBeNull()
+    expect(st().activeDelta).not.toBeNull()
 
     st().openOption('OPT-01')
 

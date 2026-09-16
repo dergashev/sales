@@ -205,44 +205,111 @@ export type FixtureEvidenceItem = {
 /** Items of one group, split into what is shown and what discloses. */
 export type EvidenceGroupView = {
   group: EvidenceGroup
-  visible: readonly FixtureEvidenceItem[]
-  disclosed: readonly FixtureEvidenceItem[]
-  /** `visible.length` — the numerator of the group heading's `n / total`. */
-  visibleCount: number
+  /** Every item of the group, in reading order. Nothing is withheld. */
+  items: readonly FixtureEvidenceItem[]
   total: number
   /** Items in this group that need somebody to look at them. */
   attentionCount: number
 }
 
 /** Every item of a project, in fixture order. */
+/**
+ * The project as the reader sees it after confirmations made in session.
+ *
+ * The fixture is the analysis's OUTPUT and stays untouched; a confirmation
+ * is a later act by a person, so it is applied as a projection over it
+ * rather than by editing the extracted record. Attribution travels with the
+ * value — `confirmed` without an actor and a time is exactly what
+ * `validateEvidence` rejects.
+ */
+export function withEvidenceConfirmations(
+  project: FixtureProject,
+  confirmations: Record<string, { by: string; at: string }>,
+  /**
+   * Values a person typed in place of the extracted one.
+   *
+   * Applied AFTER the confirmations and winning over them: a manual value is
+   * the stronger act, and it keeps what it displaced (`previousValue`) rather
+   * than erasing it — M-1/D-08 hold for a value a person replaced exactly as
+   * they hold for one they vouched for.
+   */
+  overrides: Record<string, { value: string; by: string; at: string }> = {},
+): FixtureProject {
+  const ids = Object.keys(confirmations)
+  const overrideIds = Object.keys(overrides)
+  if (ids.length === 0 && overrideIds.length === 0) return project
+  let changed = false
+  const evidence = project.evidence.map((item) => {
+    const override = overrides[item.id]
+    if (override) {
+      changed = true
+      return {
+        ...item,
+        value: override.value,
+        authority: 'overridden' as EvidenceAuthority,
+        previousValue: item.previousValue ?? item.value,
+        reasonKey: item.reasonKey ?? 'vr3.evidence.override.manualReason',
+        confirmedBy: override.by,
+        confirmedAt: override.at,
+      }
+    }
+    const confirmation = confirmations[item.id]
+    if (!confirmation || item.authority === 'confirmed') return item
+    changed = true
+    return {
+      ...item,
+      authority: 'confirmed' as EvidenceAuthority,
+      confirmedBy: confirmation.by,
+      confirmedAt: confirmation.at,
+    }
+  })
+  return changed ? { ...project, evidence } : project
+}
+
+/** Can this value still be confirmed by a person, or is it already vouched for? */
+export function isConfirmable(item: FixtureEvidenceItem): boolean {
+  return item.authority === 'derived' && item.state === 'current'
+}
+
 export function evidenceItems(project: FixtureProject): readonly FixtureEvidenceItem[] {
   return project.evidence
 }
 
 /**
- * The group's two to four visible items, and the rest.
+ * One group's items, in reading order.
  *
- * The head is the `primary` items, capped at four. The cap is enforced HERE
- * rather than trusted to the fixture: a group that quietly grew to nine
- * visible items would stop being a compact overview, and the failure would
- * be a layout observation instead of a rule.
+ * NOTHING IS FOLDED AWAY. The group used to show four rows and hide the rest
+ * behind «show all 6 more»: the count on the heading then had to explain why
+ * a group of ten showed four, and a reader looking for one value had to open
+ * every group to find out whether it was in there. The group is the unit of
+ * reading, so the group itself is what opens and closes — every row inside it
+ * is present the moment it is open.
+ *
+ * The ORDER carries the work: items still waiting for a person first, then
+ * the ones settled in this session directly under them — a value must not
+ * travel across the screen at the moment somebody vouches for it — then the
+ * rest in fixture order.
  */
-export const EVIDENCE_VISIBLE_MAX = 4
-
 export function evidenceGroupView(
   project: FixtureProject,
   group: EvidenceGroup,
+  /** Items confirmed or entered by hand in THIS session. */
+  settledHere: ReadonlySet<string> = new Set(),
 ): EvidenceGroupView {
   const all = project.evidence.filter((item) => item.group === group)
-  const primary = all.filter((item) => item.impact === 'primary')
-  const visible = primary.slice(0, EVIDENCE_VISIBLE_MAX)
-  const shown = new Set(visible.map((item) => item.id))
-  const disclosed = all.filter((item) => !shown.has(item.id))
+  const open = all.filter((item) => isConfirmable(item))
+  const openIds = new Set(open.map((item) => item.id))
+  const justSettled = all.filter(
+    (item) => !openIds.has(item.id) && settledHere.has(item.id),
+  )
+  const settledIds = new Set(justSettled.map((item) => item.id))
+  const rest = all.filter(
+    (item) => !openIds.has(item.id) && !settledIds.has(item.id),
+  )
+  const items = [...open, ...justSettled, ...rest]
   return {
     group,
-    visible,
-    disclosed,
-    visibleCount: visible.length,
+    items,
     total: all.length,
     attentionCount: all.filter((item) => needsAttention(item.state)).length,
   }
@@ -379,15 +446,15 @@ export function reconcileEvidenceCounts(project: FixtureProject): string[] {
      * default requirement» is the audit's wording and this is where it is
      * enforced: nothing may be fabricated to fill a heading.
      *
-     * A group that HAS items must show two to four of them before
-     * disclosure, or it is not the compact overview the target asks for.
+     * A group that HAS items must offer every one of them: the check used to
+     * assert a two-to-four compact head, which stopped being the shape of
+     * the surface when the disclosure was replaced by a group that opens.
      */
     if (view.total === 0) continue
-    if (view.visibleCount < 2 && view.total >= 2) {
+    if (view.items.length !== view.total) {
       problems.push(
-        `${project.id}: group «${group}» holds ${view.total} items but shows `
-        + `${view.visibleCount} before disclosure; the compact overview needs `
-        + 'two to four',
+        `${project.id}: group «${group}» holds ${view.total} items but offers `
+        + `${view.items.length}; a group withholds nothing`,
       )
     }
   }

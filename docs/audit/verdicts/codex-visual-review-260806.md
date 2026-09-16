@@ -65,7 +65,7 @@ selectors, поэтому порядок не меняет вид компоне
 - Chromium, showcase: 9 разделов на 1440×1000 и 390×844, дополнительно 320×844;
   console/page errors — 0, page horizontal scroll — 0, computed gradients — 0,
   недопустимые radii — 0, обычные пробелы число↔единица — 0.
-- Интерактивно проверены façade selection (`aria-pressed` + border + check), origin popover,
+- Интерактивно проверены facade selection (`aria-pressed` + border + check), origin popover,
   Gantt details и внутренний table scroll; открытый popover не расширяет страницу.
 - `npm run verify`: новых нарушений 0, невыполненных проверок 0; 7 известных открытых.
 - `npm test`: 5 файлов, 91 тест пройден. Тесты печатают уже существующие DOM-nesting warnings

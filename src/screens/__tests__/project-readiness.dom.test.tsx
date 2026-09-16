@@ -149,7 +149,7 @@ describe('before the analysis: the document register, and NO result anatomy', ()
     expect(document.querySelector('.a3-pjob-progress')).toBeNull()
     // The scope-aware action names the set the operation will process.
     expect(screen.getByRole('button', {
-      name: 'Alle 8 analysierbaren Dokumente analysieren',
+      name: 'Alle 8 Dokumente analysieren',
     })).toBeInTheDocument()
   })
 
@@ -178,7 +178,7 @@ describe('before the analysis: the document register, and NO result anatomy', ()
     act(() => st().tickDocumentAnalysis())
     expect(st().projectAnalyses['DEMO-HAPPY-01']!.jobState).toBe('NOT_STARTED')
     await user.click(screen.getByRole('button', {
-      name: 'Alle 8 analysierbaren Dokumente analysieren',
+      name: 'Alle 8 Dokumente analysieren',
     }))
     expect(st().projectAnalyses['DEMO-HAPPY-01']!.jobState).toBe('RUNNING')
   })
@@ -189,7 +189,7 @@ describe('during the analysis: per-file truth', () => {
     const user = userEvent.setup()
     await openProject(user, 'Wohnhof Lindenhain')
     await user.click(screen.getByRole('button', {
-      name: 'Alle 8 analysierbaren Dokumente analysieren',
+      name: 'Alle 8 Dokumente analysieren',
     }))
     const st = () => useStore.getState()
     act(() => st().tickDocumentAnalysis())
@@ -254,7 +254,7 @@ describe('during the analysis: per-file truth', () => {
     }
     // Inspection is independent of recovery: it exists on this row and on
     // rows that have nothing to recover from.
-    expect(within(failed).getByRole('button', { name: /Beleg ansehen/ }))
+    expect(within(failed).getByRole('button', { name: /Vorschau/ }))
       .toBeInTheDocument()
   })
 })
@@ -411,7 +411,7 @@ describe('accessibility of the project surfaces', () => {
     const nav = screen.getByRole('navigation', { name: 'Projektablauf' })
     expect(nav).toBeInTheDocument()
     expect(nav.querySelectorAll('.a3-wfn-stage')).toHaveLength(3)
-    for (const stage of ['Dokumente', 'Projektverständnis', 'Optionen']) {
+    for (const stage of ['Dokumente', 'Projekt-Checkliste', 'Optionen']) {
       expect(within(nav).getByText(stage)).toBeInTheDocument()
     }
     // AC-6: a stage may only appear in the rail of the tier that owns its
@@ -435,12 +435,12 @@ describe('accessibility of the project surfaces', () => {
     finishAnalysis()
     await waitFor(() => {
       expect(within(screen.getByRole('navigation', { name: 'Projektablauf' }))
-        .getByText('Projektverständnis').closest('li'))
+        .getByText('Projekt-Checkliste').closest('li'))
         .not.toHaveClass('a3-wfn-locked')
     })
     act(() => { useStore.getState().setProjectStage('understanding') })
     expect(screen.getByRole('navigation', { name: 'Projektablauf' })
-      .querySelector('[aria-current="step"]')).toHaveTextContent('Projektverständnis')
+      .querySelector('[aria-current="step"]')).toHaveTextContent('Projekt-Checkliste')
     act(() => { useStore.getState().createOption() })
     act(() => { useStore.getState().setProjectStage('options') })
     expect(screen.getByRole('navigation', { name: 'Projektablauf' })
@@ -476,7 +476,7 @@ describe('accessibility of the project surfaces', () => {
     const user = userEvent.setup()
     await openProject(user, 'Wohnhof Lindenhain')
     await user.click(screen.getByRole('button', {
-      name: 'Alle 8 analysierbaren Dokumente analysieren',
+      name: 'Alle 8 Dokumente analysieren',
     }))
     const live = document.querySelectorAll('.a3-pjob [aria-live="polite"]')
     // One region for the whole job — not one per row.

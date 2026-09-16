@@ -198,8 +198,8 @@
                   "includeLabelEn": "Included in All3 scope",
                   "excludeLabelDe": "Nicht im All3-Leistungsumfang",
                   "excludeLabelEn": "Not included in All3 scope",
-                  "excludedPhraseDe": "nicht im All3-Angebot · Verantwortung offen",
-                  "excludedPhraseEn": "not in the All3 offer · responsibility open",
+                  "excludedPhraseDe": "nicht im All3-Angebot",
+                  "excludedPhraseEn": "not in the All3 offer",
                   "requiresDecision": false
                 }
               ],
@@ -276,7 +276,7 @@
                     "valueEn": "no basement"
                   },
                   "whyDe": "Enthalten bei „nur Ausbau“: nichttragende Wände, Estrich und Ausbauoberflächen, Innentüren, ausbauseitige Brand- und Schallschutzabschlüsse. Ausgeschlossen: Erdarbeiten, Gründung, tragender Rohbau, Abdichtung, Fassade und äußere Öffnungen — der Auftraggeber übergibt einen tragfähigen, dichten Rohbau. TGA im UG folgt den eigenen Systemgrenzen der KG 400.",
-                  "whyEn": "Included with “fit-out only”: non-loadbearing partitions, screed and finish families, internal doors, fit-out-side fire and acoustic closures. Excluded: excavation, foundations, loadbearing shell, waterproofing, façade and external openings — the client hands over a structurally complete, watertight shell. Basement services follow the KG 400 system boundaries.",
+                  "whyEn": "Included with “fit-out only”: non-loadbearing partitions, screed and finish families, internal doors, fit-out-side fire and acoustic closures. Excluded: excavation, foundations, loadbearing shell, waterproofing, facade and external openings — the client hands over a structurally complete, watertight shell. Basement services follow the KG 400 system boundaries.",
                   "offerNoteDe": "Untergeschoss: nur Ausbau durch All3. Erdarbeiten, Gründung, tragender Rohbau, Abdichtung und äußere Öffnungen sind nicht Bestandteil des All3-Angebots; TGA-Leistungen gemäß den separat ausgewiesenen Systemgrenzen.",
                   "offerNoteEn": "Basement: All3 fit-out only. Excavation, foundations, loadbearing shell, waterproofing and external openings are excluded from the All3 offer; building-services scope follows the separately stated system boundaries.",
                   "scopeDe": "je Gebäude",
@@ -369,7 +369,7 @@
                     "variant": "GF_CONCRETE"
                   },
                   "whyDe": "Das Tragsystem bestimmt Fassaden-, Brandschutz-, Schall- und Installationsdetails über Fachregeln, nicht über die Oberfläche.",
-                  "whyEn": "The structural system constrains façade, fire, acoustic and installation details through domain rules, not through the interface.",
+                  "whyEn": "The structural system constrains facade, fire, acoustic and installation details through domain rules, not through the interface.",
                   "offerNoteDe": "Tragsystem Erdgeschoss: Betontragwerk bzw. Holztragwerk gemäß Tragwerkskonzept.",
                   "offerNoteEn": "Ground-floor structural system: concrete or timber structure to the structural concept.",
                   "scopeDe": "je Gebäude",
@@ -428,8 +428,8 @@
                   "includeLabelEn": "Included in All3 scope",
                   "excludeLabelDe": "Nicht im All3-Leistungsumfang",
                   "excludeLabelEn": "Not included in All3 scope",
-                  "excludedPhraseDe": "nicht im All3-Angebot · Verantwortung offen",
-                  "excludedPhraseEn": "not in the All3 offer · responsibility open"
+                  "excludedPhraseDe": "nicht im All3-Angebot",
+                  "excludedPhraseEn": "not in the All3 offer"
                 },
                 {
                   "id": "a-300-balcony-support-b01",
@@ -450,7 +450,7 @@
                         "delta": "0.00",
                         "noPriceBasis": true,
                         "detailDe": "Lasten über Stützen vor der Fassade",
-                        "detailEn": "loads via columns in front of the façade"
+                        "detailEn": "loads via columns in front of the facade"
                       },
                       {
                         "value": "BAL_DIAGONAL",
@@ -459,7 +459,7 @@
                         "delta": "0.00",
                         "noPriceBasis": true,
                         "detailDe": "Lasten über Diagonalen in die Fassade",
-                        "detailEn": "loads via diagonals into the façade"
+                        "detailEn": "loads via diagonals into the facade"
                       },
                       {
                         "value": "BAL_CANTILEVER",
@@ -505,12 +505,12 @@
             {
               "id": "a-kg300-facade-b01",
               "labelDe": "Fassade",
-              "labelEn": "Façade",
+              "labelEn": "Facade",
               "services": [
                 {
                   "id": "a-300-facade-composition-b01",
                   "labelDe": "Fassadenaufbau",
-                  "labelEn": "Façade composition",
+                  "labelEn": "Facade composition",
                   "summaryDe": "Bestimmt die aktiven Materialzonen und damit Farbwelt und Materialausdruck.",
                   "summaryEn": "Determines the active material zones and with them colour and texture families.",
                   "amount": "1180000.00",
@@ -522,20 +522,20 @@
                       {
                         "value": "FAC_FULL_TIMBER",
                         "labelDe": "Durchgehende Holzfassade",
-                        "labelEn": "Full timber façade",
+                        "labelEn": "Full timber facade",
                         "delta": "0.00",
                         "noPriceBasis": true
                       },
                       {
                         "value": "FAC_FULL_RENDER",
                         "labelDe": "Durchgehende Putzfassade",
-                        "labelEn": "Full rendered façade",
+                        "labelEn": "Full rendered facade",
                         "delta": "0.00"
                       },
                       {
                         "value": "FAC_FULL_CLINKER",
                         "labelDe": "Durchgehende Klinkerfassade",
-                        "labelEn": "Full clinker-brick façade",
+                        "labelEn": "Full clinker-brick facade",
                         "delta": "0.00",
                         "noPriceBasis": true
                       },
@@ -568,7 +568,7 @@
                   "whyDe": "Der Aufbau bestimmt die aktiven Materialzonen, die zulässigen Farb- und Materialfamilien und die Einbauschnittstelle der Fenster. Nur die dokumentierte Zusammensetzung ist bepreist; jede andere hat bis zur Kalibrierung keine Preisgrundlage.",
                   "whyEn": "The composition determines the active material zones, the admissible colour and texture families and the window installation interface. Only the documented composition is priced; every other one has no price basis until calibrated.",
                   "offerNoteDe": "Fassadenaufbau wie gewählt; Farbwelt und Materialausdruck als Familie, das exakte Produkt folgt in der Bemusterung.",
-                  "offerNoteEn": "Façade composition as chosen; colour and texture as a family, the exact product follows in the specification stage.",
+                  "offerNoteEn": "Facade composition as chosen; colour and texture as a family, the exact product follows in the specification stage.",
                   "scopeDe": "je Gebäude",
                   "scopeEn": "per building",
                   "requiresDecision": false
@@ -940,7 +940,7 @@
                 }
               ],
               "summaryDe": "Durchgehende Putzfassade · Farbwelt und Materialausdruck als Familie",
-              "summaryEn": "Full rendered façade · colour and texture as a family",
+              "summaryEn": "Full rendered facade · colour and texture as a family",
               "visual": "facade",
               "buildingId": "A-BLDG-01",
               "costAuthority": "direct",
@@ -948,11 +948,11 @@
               "byVariant": {
                 "FAC_FULL_TIMBER": {
                   "summaryDe": "Durchgehende Holzfassade · Farbwelt und Materialausdruck als Familie",
-                  "summaryEn": "Full timber façade · colour and texture as a family"
+                  "summaryEn": "Full timber facade · colour and texture as a family"
                 },
                 "FAC_FULL_CLINKER": {
                   "summaryDe": "Durchgehende Klinkerfassade · Farbwelt und Materialausdruck als Familie",
-                  "summaryEn": "Full clinker-brick façade · colour and texture as a family"
+                  "summaryEn": "Full clinker-brick facade · colour and texture as a family"
                 },
                 "FAC_GF_RENDER_UPPER_TIMBER": {
                   "summaryDe": "Erdgeschoss Putz · Obergeschosse Holz · Farbwelt und Materialausdruck als Familie",
@@ -1252,7 +1252,7 @@
                     "originEn": "Building baseline · confirmed · window concept not specified"
                   },
                   "whyDe": "Rahmensystem, Elementgröße und Fassadenschnittstelle werden fachlich geprüft; bis zur All3-Kalibrierung keine gesonderte Preisgrundlage.",
-                  "whyEn": "Frame system, element size and façade interface are domain-validated; no separate price basis until All3 calibration.",
+                  "whyEn": "Frame system, element size and facade interface are domain-validated; no separate price basis until All3 calibration.",
                   "offerNoteDe": "Rahmenfamilie im Angebot; Hersteller, Profil, Farbe, Fensterbank und Beschlag später.",
                   "offerNoteEn": "Frame family in the offer; manufacturer, profile, colour, sill and hardware later.",
                   "scopeDe": "je Gebäude",
@@ -1299,7 +1299,7 @@
                     "originEn": "Building baseline · confirmed · window concept not specified"
                   },
                   "whyDe": "Großformate lösen Statik-, Absturz-, Einbau- und Fassadenprüfungen aus.",
-                  "whyEn": "Large formats trigger structural, fall-protection, installation and façade checks.",
+                  "whyEn": "Large formats trigger structural, fall-protection, installation and facade checks.",
                   "offerNoteDe": "Formatpaket im Angebot; Maße, Teilungen und Flügelschema später.",
                   "offerNoteEn": "Format package in the offer; dimensions, divisions and sash schedule later.",
                   "scopeDe": "je Gebäude",
@@ -1672,7 +1672,7 @@
             "rows": [
               {
                 "decidedDe": "Fassadenaufbau, Farbwelt und Materialausdruck je Materialzone",
-                "decidedEn": "Façade composition, colour and texture family per material zone",
+                "decidedEn": "Facade composition, colour and texture family per material zone",
                 "deferredDe": "Hersteller, exakter RAL-/NCS-Ton, Stein- und Beschichtungscode, Brettprofil, Körnung, Verband und Fuge",
                 "deferredEn": "Manufacturer, exact RAL/NCS shade, brick and coating code, board profile, grain, bond and joint"
               },
@@ -3587,8 +3587,8 @@
                   "includeLabelEn": "Included in All3 scope",
                   "excludeLabelDe": "Nicht im All3-Leistungsumfang",
                   "excludeLabelEn": "Not included in All3 scope",
-                  "excludedPhraseDe": "nicht im All3-Angebot · Verantwortung offen",
-                  "excludedPhraseEn": "not in the All3 offer · responsibility open",
+                  "excludedPhraseDe": "nicht im All3-Angebot",
+                  "excludedPhraseEn": "not in the All3 offer",
                   "requiresDecision": false
                 }
               ],
@@ -3665,7 +3665,7 @@
                     "valueEn": "no basement"
                   },
                   "whyDe": "Enthalten bei „nur Ausbau“: nichttragende Wände, Estrich und Ausbauoberflächen, Innentüren, ausbauseitige Brand- und Schallschutzabschlüsse. Ausgeschlossen: Erdarbeiten, Gründung, tragender Rohbau, Abdichtung, Fassade und äußere Öffnungen — der Auftraggeber übergibt einen tragfähigen, dichten Rohbau. TGA im UG folgt den eigenen Systemgrenzen der KG 400.",
-                  "whyEn": "Included with “fit-out only”: non-loadbearing partitions, screed and finish families, internal doors, fit-out-side fire and acoustic closures. Excluded: excavation, foundations, loadbearing shell, waterproofing, façade and external openings — the client hands over a structurally complete, watertight shell. Basement services follow the KG 400 system boundaries.",
+                  "whyEn": "Included with “fit-out only”: non-loadbearing partitions, screed and finish families, internal doors, fit-out-side fire and acoustic closures. Excluded: excavation, foundations, loadbearing shell, waterproofing, facade and external openings — the client hands over a structurally complete, watertight shell. Basement services follow the KG 400 system boundaries.",
                   "offerNoteDe": "Untergeschoss: nur Ausbau durch All3. Erdarbeiten, Gründung, tragender Rohbau, Abdichtung und äußere Öffnungen sind nicht Bestandteil des All3-Angebots; TGA-Leistungen gemäß den separat ausgewiesenen Systemgrenzen.",
                   "offerNoteEn": "Basement: All3 fit-out only. Excavation, foundations, loadbearing shell, waterproofing and external openings are excluded from the All3 offer; building-services scope follows the separately stated system boundaries.",
                   "scopeDe": "je Gebäude",
@@ -3758,7 +3758,7 @@
                     "variant": "GF_CONCRETE"
                   },
                   "whyDe": "Das Tragsystem bestimmt Fassaden-, Brandschutz-, Schall- und Installationsdetails über Fachregeln, nicht über die Oberfläche.",
-                  "whyEn": "The structural system constrains façade, fire, acoustic and installation details through domain rules, not through the interface.",
+                  "whyEn": "The structural system constrains facade, fire, acoustic and installation details through domain rules, not through the interface.",
                   "offerNoteDe": "Tragsystem Erdgeschoss: Betontragwerk bzw. Holztragwerk gemäß Tragwerkskonzept.",
                   "offerNoteEn": "Ground-floor structural system: concrete or timber structure to the structural concept.",
                   "scopeDe": "je Gebäude",
@@ -3819,8 +3819,8 @@
                   "includeLabelEn": "Included in All3 scope",
                   "excludeLabelDe": "Nicht im All3-Leistungsumfang",
                   "excludeLabelEn": "Not included in All3 scope",
-                  "excludedPhraseDe": "nicht im All3-Angebot · Verantwortung offen",
-                  "excludedPhraseEn": "not in the All3 offer · responsibility open"
+                  "excludedPhraseDe": "nicht im All3-Angebot",
+                  "excludedPhraseEn": "not in the All3 offer"
                 },
                 {
                   "id": "b-300-balcony-support-ba",
@@ -3841,7 +3841,7 @@
                         "delta": "0.00",
                         "noPriceBasis": true,
                         "detailDe": "Lasten über Stützen vor der Fassade",
-                        "detailEn": "loads via columns in front of the façade"
+                        "detailEn": "loads via columns in front of the facade"
                       },
                       {
                         "value": "BAL_DIAGONAL",
@@ -3850,7 +3850,7 @@
                         "delta": "0.00",
                         "noPriceBasis": true,
                         "detailDe": "Lasten über Diagonalen in die Fassade",
-                        "detailEn": "loads via diagonals into the façade"
+                        "detailEn": "loads via diagonals into the facade"
                       },
                       {
                         "value": "BAL_CANTILEVER",
@@ -3896,12 +3896,12 @@
             {
               "id": "b-kg300-facade-ba",
               "labelDe": "Fassade",
-              "labelEn": "Façade",
+              "labelEn": "Facade",
               "services": [
                 {
                   "id": "b-300-facade-composition-ba",
                   "labelDe": "Fassadenaufbau",
-                  "labelEn": "Façade composition",
+                  "labelEn": "Facade composition",
                   "summaryDe": "Bestimmt die aktiven Materialzonen und damit Farbwelt und Materialausdruck.",
                   "summaryEn": "Determines the active material zones and with them colour and texture families.",
                   "amount": "2180000.00",
@@ -3913,21 +3913,21 @@
                       {
                         "value": "FAC_FULL_TIMBER",
                         "labelDe": "Durchgehende Holzfassade",
-                        "labelEn": "Full timber façade",
+                        "labelEn": "Full timber facade",
                         "delta": "0.00",
                         "noPriceBasis": true
                       },
                       {
                         "value": "FAC_FULL_RENDER",
                         "labelDe": "Durchgehende Putzfassade",
-                        "labelEn": "Full rendered façade",
+                        "labelEn": "Full rendered facade",
                         "delta": "0.00",
                         "noPriceBasis": true
                       },
                       {
                         "value": "FAC_FULL_CLINKER",
                         "labelDe": "Durchgehende Klinkerfassade",
-                        "labelEn": "Full clinker-brick façade",
+                        "labelEn": "Full clinker-brick facade",
                         "delta": "0.00"
                       },
                       {
@@ -3959,11 +3959,11 @@
                   "whyDe": "Der Aufbau bestimmt die aktiven Materialzonen, die zulässigen Farb- und Materialfamilien und die Einbauschnittstelle der Fenster. Nur die dokumentierte Zusammensetzung ist bepreist; jede andere hat bis zur Kalibrierung keine Preisgrundlage.",
                   "whyEn": "The composition determines the active material zones, the admissible colour and texture families and the window installation interface. Only the documented composition is priced; every other one has no price basis until calibrated.",
                   "offerNoteDe": "Fassadenaufbau wie gewählt; Farbwelt und Materialausdruck als Familie, das exakte Produkt folgt in der Bemusterung.",
-                  "offerNoteEn": "Façade composition as chosen; colour and texture as a family, the exact product follows in the specification stage.",
+                  "offerNoteEn": "Facade composition as chosen; colour and texture as a family, the exact product follows in the specification stage.",
                   "scopeDe": "je Gebäude",
                   "scopeEn": "per building",
                   "costBasisDe": "Fassade & Dach",
-                  "costBasisEn": "Façade & roof",
+                  "costBasisEn": "Facade & roof",
                   "requiresDecision": false
                 },
                 {
@@ -4333,7 +4333,7 @@
                 }
               ],
               "summaryDe": "Durchgehende Klinkerfassade · Farbwelt und Materialausdruck als Familie",
-              "summaryEn": "Full clinker-brick façade · colour and texture as a family",
+              "summaryEn": "Full clinker-brick facade · colour and texture as a family",
               "visual": "facade",
               "buildingId": "B-BLDG-A",
               "costAuthority": "direct",
@@ -4341,11 +4341,11 @@
               "byVariant": {
                 "FAC_FULL_TIMBER": {
                   "summaryDe": "Durchgehende Holzfassade · Farbwelt und Materialausdruck als Familie",
-                  "summaryEn": "Full timber façade · colour and texture as a family"
+                  "summaryEn": "Full timber facade · colour and texture as a family"
                 },
                 "FAC_FULL_RENDER": {
                   "summaryDe": "Durchgehende Putzfassade · Farbwelt und Materialausdruck als Familie",
-                  "summaryEn": "Full rendered façade · colour and texture as a family"
+                  "summaryEn": "Full rendered facade · colour and texture as a family"
                 },
                 "FAC_GF_RENDER_UPPER_TIMBER": {
                   "summaryDe": "Erdgeschoss Putz · Obergeschosse Holz · Farbwelt und Materialausdruck als Familie",
@@ -4450,13 +4450,13 @@
                     "variant": "ROOF_NON_GREEN"
                   },
                   "whyDe": "Das Geld sitzt in der Position „Fassade & Dach“ des Fassadenaufbaus; die Begrünung wird dort mitgetragen und hat keinen eigenen Betrag.",
-                  "whyEn": "The money sits in the façade composition’s “Façade & roof” position; greening is carried there and has no amount of its own.",
+                  "whyEn": "The money sits in the facade composition’s “Facade & roof” position; greening is carried there and has no amount of its own.",
                   "offerNoteDe": "Begrüntes bzw. nicht begrüntes Dach und Zugangsart im Angebot; Bepflanzung, Belag und System später.",
                   "offerNoteEn": "Green or non-green roof and access mode in the offer; planting, paving and system later.",
                   "scopeDe": "je Gebäude",
                   "scopeEn": "per building",
                   "costBasisDe": "Fassade & Dach",
-                  "costBasisEn": "Façade & roof",
+                  "costBasisEn": "Facade & roof",
                   "requiresDecision": false
                 },
                 {
@@ -4507,7 +4507,7 @@
                 }
               ],
               "summaryDe": "Retentionsdach nicht begrünt · nur Wartungszugang · in „Fassade & Dach“",
-              "summaryEn": "Non-green retention roof · maintenance access only · in “Façade & roof”",
+              "summaryEn": "Non-green retention roof · maintenance access only · in “Facade & roof”",
               "visual": "roof",
               "buildingId": "B-BLDG-A",
               "costAuthority": "bundle",
@@ -4647,7 +4647,7 @@
                     "originEn": "Building baseline · building A · window concept not specified"
                   },
                   "whyDe": "Rahmensystem, Elementgröße und Fassadenschnittstelle werden fachlich geprüft; bis zur All3-Kalibrierung keine gesonderte Preisgrundlage.",
-                  "whyEn": "Frame system, element size and façade interface are domain-validated; no separate price basis until All3 calibration.",
+                  "whyEn": "Frame system, element size and facade interface are domain-validated; no separate price basis until All3 calibration.",
                   "offerNoteDe": "Rahmenfamilie im Angebot; Hersteller, Profil, Farbe, Fensterbank und Beschlag später.",
                   "offerNoteEn": "Frame family in the offer; manufacturer, profile, colour, sill and hardware later.",
                   "scopeDe": "je Gebäude",
@@ -4694,7 +4694,7 @@
                     "originEn": "Building baseline · building A · window concept not specified"
                   },
                   "whyDe": "Großformate lösen Statik-, Absturz-, Einbau- und Fassadenprüfungen aus.",
-                  "whyEn": "Large formats trigger structural, fall-protection, installation and façade checks.",
+                  "whyEn": "Large formats trigger structural, fall-protection, installation and facade checks.",
                   "offerNoteDe": "Formatpaket im Angebot; Maße, Teilungen und Flügelschema später.",
                   "offerNoteEn": "Format package in the offer; dimensions, divisions and sash schedule later.",
                   "scopeDe": "je Gebäude",
@@ -5102,8 +5102,8 @@
                   "includeLabelEn": "Included in All3 scope",
                   "excludeLabelDe": "Nicht im All3-Leistungsumfang",
                   "excludeLabelEn": "Not included in All3 scope",
-                  "excludedPhraseDe": "nicht im All3-Angebot · Verantwortung offen",
-                  "excludedPhraseEn": "not in the All3 offer · responsibility open",
+                  "excludedPhraseDe": "nicht im All3-Angebot",
+                  "excludedPhraseEn": "not in the All3 offer",
                   "requiresDecision": false
                 }
               ],
@@ -5180,7 +5180,7 @@
                     "variant": "UG_FULL"
                   },
                   "whyDe": "Enthalten bei „nur Ausbau“: nichttragende Wände, Estrich und Ausbauoberflächen, Innentüren, ausbauseitige Brand- und Schallschutzabschlüsse. Ausgeschlossen: Erdarbeiten, Gründung, tragender Rohbau, Abdichtung, Fassade und äußere Öffnungen — der Auftraggeber übergibt einen tragfähigen, dichten Rohbau. TGA im UG folgt den eigenen Systemgrenzen der KG 400.",
-                  "whyEn": "Included with “fit-out only”: non-loadbearing partitions, screed and finish families, internal doors, fit-out-side fire and acoustic closures. Excluded: excavation, foundations, loadbearing shell, waterproofing, façade and external openings — the client hands over a structurally complete, watertight shell. Basement services follow the KG 400 system boundaries.",
+                  "whyEn": "Included with “fit-out only”: non-loadbearing partitions, screed and finish families, internal doors, fit-out-side fire and acoustic closures. Excluded: excavation, foundations, loadbearing shell, waterproofing, facade and external openings — the client hands over a structurally complete, watertight shell. Basement services follow the KG 400 system boundaries.",
                   "offerNoteDe": "Untergeschoss: nur Ausbau durch All3. Erdarbeiten, Gründung, tragender Rohbau, Abdichtung und äußere Öffnungen sind nicht Bestandteil des All3-Angebots; TGA-Leistungen gemäß den separat ausgewiesenen Systemgrenzen.",
                   "offerNoteEn": "Basement: All3 fit-out only. Excavation, foundations, loadbearing shell, waterproofing and external openings are excluded from the All3 offer; building-services scope follows the separately stated system boundaries.",
                   "scopeDe": "je Gebäude",
@@ -5263,7 +5263,7 @@
                     "variant": "GF_CONCRETE"
                   },
                   "whyDe": "Das Tragsystem bestimmt Fassaden-, Brandschutz-, Schall- und Installationsdetails über Fachregeln, nicht über die Oberfläche.",
-                  "whyEn": "The structural system constrains façade, fire, acoustic and installation details through domain rules, not through the interface.",
+                  "whyEn": "The structural system constrains facade, fire, acoustic and installation details through domain rules, not through the interface.",
                   "offerNoteDe": "Tragsystem Erdgeschoss: Betontragwerk bzw. Holztragwerk gemäß Tragwerkskonzept.",
                   "offerNoteEn": "Ground-floor structural system: concrete or timber structure to the structural concept.",
                   "scopeDe": "je Gebäude",
@@ -5324,8 +5324,8 @@
                   "includeLabelEn": "Included in All3 scope",
                   "excludeLabelDe": "Nicht im All3-Leistungsumfang",
                   "excludeLabelEn": "Not included in All3 scope",
-                  "excludedPhraseDe": "nicht im All3-Angebot · Verantwortung offen",
-                  "excludedPhraseEn": "not in the All3 offer · responsibility open"
+                  "excludedPhraseDe": "nicht im All3-Angebot",
+                  "excludedPhraseEn": "not in the All3 offer"
                 },
                 {
                   "id": "b-300-balcony-support-bb",
@@ -5346,7 +5346,7 @@
                         "delta": "0.00",
                         "noPriceBasis": true,
                         "detailDe": "Lasten über Stützen vor der Fassade",
-                        "detailEn": "loads via columns in front of the façade"
+                        "detailEn": "loads via columns in front of the facade"
                       },
                       {
                         "value": "BAL_DIAGONAL",
@@ -5355,7 +5355,7 @@
                         "delta": "0.00",
                         "noPriceBasis": true,
                         "detailDe": "Lasten über Diagonalen in die Fassade",
-                        "detailEn": "loads via diagonals into the façade"
+                        "detailEn": "loads via diagonals into the facade"
                       },
                       {
                         "value": "BAL_CANTILEVER",
@@ -5401,12 +5401,12 @@
             {
               "id": "b-kg300-facade-bb",
               "labelDe": "Fassade",
-              "labelEn": "Façade",
+              "labelEn": "Facade",
               "services": [
                 {
                   "id": "b-300-facade-composition-bb",
                   "labelDe": "Fassadenaufbau",
-                  "labelEn": "Façade composition",
+                  "labelEn": "Facade composition",
                   "summaryDe": "Bestimmt die aktiven Materialzonen und damit Farbwelt und Materialausdruck.",
                   "summaryEn": "Determines the active material zones and with them colour and texture families.",
                   "amount": "1540000.00",
@@ -5418,20 +5418,20 @@
                       {
                         "value": "FAC_FULL_TIMBER",
                         "labelDe": "Durchgehende Holzfassade",
-                        "labelEn": "Full timber façade",
+                        "labelEn": "Full timber facade",
                         "delta": "0.00",
                         "noPriceBasis": true
                       },
                       {
                         "value": "FAC_FULL_RENDER",
                         "labelDe": "Durchgehende Putzfassade",
-                        "labelEn": "Full rendered façade",
+                        "labelEn": "Full rendered facade",
                         "delta": "0.00"
                       },
                       {
                         "value": "FAC_FULL_CLINKER",
                         "labelDe": "Durchgehende Klinkerfassade",
-                        "labelEn": "Full clinker-brick façade",
+                        "labelEn": "Full clinker-brick facade",
                         "delta": "0.00",
                         "noPriceBasis": true
                       },
@@ -5464,11 +5464,11 @@
                   "whyDe": "Der Aufbau bestimmt die aktiven Materialzonen, die zulässigen Farb- und Materialfamilien und die Einbauschnittstelle der Fenster. Nur die dokumentierte Zusammensetzung ist bepreist; jede andere hat bis zur Kalibrierung keine Preisgrundlage.",
                   "whyEn": "The composition determines the active material zones, the admissible colour and texture families and the window installation interface. Only the documented composition is priced; every other one has no price basis until calibrated.",
                   "offerNoteDe": "Fassadenaufbau wie gewählt; Farbwelt und Materialausdruck als Familie, das exakte Produkt folgt in der Bemusterung.",
-                  "offerNoteEn": "Façade composition as chosen; colour and texture as a family, the exact product follows in the specification stage.",
+                  "offerNoteEn": "Facade composition as chosen; colour and texture as a family, the exact product follows in the specification stage.",
                   "scopeDe": "je Gebäude",
                   "scopeEn": "per building",
                   "costBasisDe": "Fassade & Dach",
-                  "costBasisEn": "Façade & roof",
+                  "costBasisEn": "Facade & roof",
                   "requiresDecision": false
                 },
                 {
@@ -5838,7 +5838,7 @@
                 }
               ],
               "summaryDe": "Durchgehende Putzfassade · Farbwelt und Materialausdruck als Familie",
-              "summaryEn": "Full rendered façade · colour and texture as a family",
+              "summaryEn": "Full rendered facade · colour and texture as a family",
               "visual": "facade",
               "buildingId": "B-BLDG-B",
               "costAuthority": "direct",
@@ -5846,11 +5846,11 @@
               "byVariant": {
                 "FAC_FULL_TIMBER": {
                   "summaryDe": "Durchgehende Holzfassade · Farbwelt und Materialausdruck als Familie",
-                  "summaryEn": "Full timber façade · colour and texture as a family"
+                  "summaryEn": "Full timber facade · colour and texture as a family"
                 },
                 "FAC_FULL_CLINKER": {
                   "summaryDe": "Durchgehende Klinkerfassade · Farbwelt und Materialausdruck als Familie",
-                  "summaryEn": "Full clinker-brick façade · colour and texture as a family"
+                  "summaryEn": "Full clinker-brick facade · colour and texture as a family"
                 },
                 "FAC_GF_RENDER_UPPER_TIMBER": {
                   "summaryDe": "Erdgeschoss Putz · Obergeschosse Holz · Farbwelt und Materialausdruck als Familie",
@@ -5955,13 +5955,13 @@
                     "variant": "ROOF_GREEN"
                   },
                   "whyDe": "Das Geld sitzt in der Position „Fassade & Dach“ des Fassadenaufbaus; die Begrünung wird dort mitgetragen und hat keinen eigenen Betrag.",
-                  "whyEn": "The money sits in the façade composition’s “Façade & roof” position; greening is carried there and has no amount of its own.",
+                  "whyEn": "The money sits in the facade composition’s “Facade & roof” position; greening is carried there and has no amount of its own.",
                   "offerNoteDe": "Begrüntes bzw. nicht begrüntes Dach und Zugangsart im Angebot; Bepflanzung, Belag und System später.",
                   "offerNoteEn": "Green or non-green roof and access mode in the offer; planting, paving and system later.",
                   "scopeDe": "je Gebäude",
                   "scopeEn": "per building",
                   "costBasisDe": "Fassade & Dach",
-                  "costBasisEn": "Façade & roof",
+                  "costBasisEn": "Facade & roof",
                   "requiresDecision": false
                 },
                 {
@@ -6168,7 +6168,7 @@
                     "originEn": "Building baseline · building B · window concept not specified"
                   },
                   "whyDe": "Rahmensystem, Elementgröße und Fassadenschnittstelle werden fachlich geprüft; bis zur All3-Kalibrierung keine gesonderte Preisgrundlage.",
-                  "whyEn": "Frame system, element size and façade interface are domain-validated; no separate price basis until All3 calibration.",
+                  "whyEn": "Frame system, element size and facade interface are domain-validated; no separate price basis until All3 calibration.",
                   "offerNoteDe": "Rahmenfamilie im Angebot; Hersteller, Profil, Farbe, Fensterbank und Beschlag später.",
                   "offerNoteEn": "Frame family in the offer; manufacturer, profile, colour, sill and hardware later.",
                   "scopeDe": "je Gebäude",
@@ -6215,7 +6215,7 @@
                     "originEn": "Building baseline · building B · window concept not specified"
                   },
                   "whyDe": "Großformate lösen Statik-, Absturz-, Einbau- und Fassadenprüfungen aus.",
-                  "whyEn": "Large formats trigger structural, fall-protection, installation and façade checks.",
+                  "whyEn": "Large formats trigger structural, fall-protection, installation and facade checks.",
                   "offerNoteDe": "Formatpaket im Angebot; Maße, Teilungen und Flügelschema später.",
                   "offerNoteEn": "Format package in the offer; dimensions, divisions and sash schedule later.",
                   "scopeDe": "je Gebäude",
@@ -6588,8 +6588,8 @@
                   "includeLabelEn": "Included in All3 scope",
                   "excludeLabelDe": "Nicht im All3-Leistungsumfang",
                   "excludeLabelEn": "Not included in All3 scope",
-                  "excludedPhraseDe": "nicht im All3-Angebot · Verantwortung offen",
-                  "excludedPhraseEn": "not in the All3 offer · responsibility open",
+                  "excludedPhraseDe": "nicht im All3-Angebot",
+                  "excludedPhraseEn": "not in the All3 offer",
                   "requiresDecision": false
                 }
               ],
@@ -6667,7 +6667,7 @@
                     "variant": "UG_FULL"
                   },
                   "whyDe": "Enthalten bei „nur Ausbau“: nichttragende Wände, Estrich und Ausbauoberflächen, Innentüren, ausbauseitige Brand- und Schallschutzabschlüsse. Ausgeschlossen: Erdarbeiten, Gründung, tragender Rohbau, Abdichtung, Fassade und äußere Öffnungen — der Auftraggeber übergibt einen tragfähigen, dichten Rohbau. TGA im UG folgt den eigenen Systemgrenzen der KG 400.",
-                  "whyEn": "Included with “fit-out only”: non-loadbearing partitions, screed and finish families, internal doors, fit-out-side fire and acoustic closures. Excluded: excavation, foundations, loadbearing shell, waterproofing, façade and external openings — the client hands over a structurally complete, watertight shell. Basement services follow the KG 400 system boundaries.",
+                  "whyEn": "Included with “fit-out only”: non-loadbearing partitions, screed and finish families, internal doors, fit-out-side fire and acoustic closures. Excluded: excavation, foundations, loadbearing shell, waterproofing, facade and external openings — the client hands over a structurally complete, watertight shell. Basement services follow the KG 400 system boundaries.",
                   "offerNoteDe": "Untergeschoss: nur Ausbau durch All3. Erdarbeiten, Gründung, tragender Rohbau, Abdichtung und äußere Öffnungen sind nicht Bestandteil des All3-Angebots; TGA-Leistungen gemäß den separat ausgewiesenen Systemgrenzen.",
                   "offerNoteEn": "Basement: All3 fit-out only. Excavation, foundations, loadbearing shell, waterproofing and external openings are excluded from the All3 offer; building-services scope follows the separately stated system boundaries.",
                   "scopeDe": "je Gebäude",
@@ -6750,7 +6750,7 @@
                     "variant": "GF_CONCRETE"
                   },
                   "whyDe": "Das Tragsystem bestimmt Fassaden-, Brandschutz-, Schall- und Installationsdetails über Fachregeln, nicht über die Oberfläche.",
-                  "whyEn": "The structural system constrains façade, fire, acoustic and installation details through domain rules, not through the interface.",
+                  "whyEn": "The structural system constrains facade, fire, acoustic and installation details through domain rules, not through the interface.",
                   "offerNoteDe": "Tragsystem Erdgeschoss: Betontragwerk bzw. Holztragwerk gemäß Tragwerkskonzept.",
                   "offerNoteEn": "Ground-floor structural system: concrete or timber structure to the structural concept.",
                   "scopeDe": "je Gebäude",
@@ -6811,8 +6811,8 @@
                   "includeLabelEn": "Included in All3 scope",
                   "excludeLabelDe": "Nicht im All3-Leistungsumfang",
                   "excludeLabelEn": "Not included in All3 scope",
-                  "excludedPhraseDe": "nicht im All3-Angebot · Verantwortung offen",
-                  "excludedPhraseEn": "not in the All3 offer · responsibility open"
+                  "excludedPhraseDe": "nicht im All3-Angebot",
+                  "excludedPhraseEn": "not in the All3 offer"
                 },
                 {
                   "id": "b-300-balcony-support-bc",
@@ -6833,7 +6833,7 @@
                         "delta": "0.00",
                         "noPriceBasis": true,
                         "detailDe": "Lasten über Stützen vor der Fassade",
-                        "detailEn": "loads via columns in front of the façade"
+                        "detailEn": "loads via columns in front of the facade"
                       },
                       {
                         "value": "BAL_DIAGONAL",
@@ -6842,7 +6842,7 @@
                         "delta": "0.00",
                         "noPriceBasis": true,
                         "detailDe": "Lasten über Diagonalen in die Fassade",
-                        "detailEn": "loads via diagonals into the façade"
+                        "detailEn": "loads via diagonals into the facade"
                       },
                       {
                         "value": "BAL_CANTILEVER",
@@ -6888,12 +6888,12 @@
             {
               "id": "b-kg300-facade-bc",
               "labelDe": "Fassade",
-              "labelEn": "Façade",
+              "labelEn": "Facade",
               "services": [
                 {
                   "id": "b-300-facade-composition-bc",
                   "labelDe": "Fassadenaufbau",
-                  "labelEn": "Façade composition",
+                  "labelEn": "Facade composition",
                   "summaryDe": "Bestimmt die aktiven Materialzonen und damit Farbwelt und Materialausdruck.",
                   "summaryEn": "Determines the active material zones and with them colour and texture families.",
                   "amount": "2040000.00",
@@ -6905,21 +6905,21 @@
                       {
                         "value": "FAC_FULL_TIMBER",
                         "labelDe": "Durchgehende Holzfassade",
-                        "labelEn": "Full timber façade",
+                        "labelEn": "Full timber facade",
                         "delta": "0.00",
                         "noPriceBasis": true
                       },
                       {
                         "value": "FAC_FULL_RENDER",
                         "labelDe": "Durchgehende Putzfassade",
-                        "labelEn": "Full rendered façade",
+                        "labelEn": "Full rendered facade",
                         "delta": "0.00",
                         "noPriceBasis": true
                       },
                       {
                         "value": "FAC_FULL_CLINKER",
                         "labelDe": "Durchgehende Klinkerfassade",
-                        "labelEn": "Full clinker-brick façade",
+                        "labelEn": "Full clinker-brick facade",
                         "delta": "0.00",
                         "noPriceBasis": true
                       },
@@ -6950,11 +6950,11 @@
                   "whyDe": "Der Aufbau bestimmt die aktiven Materialzonen, die zulässigen Farb- und Materialfamilien und die Einbauschnittstelle der Fenster. Nur die dokumentierte Zusammensetzung ist bepreist; jede andere hat bis zur Kalibrierung keine Preisgrundlage.",
                   "whyEn": "The composition determines the active material zones, the admissible colour and texture families and the window installation interface. Only the documented composition is priced; every other one has no price basis until calibrated.",
                   "offerNoteDe": "Fassadenaufbau wie gewählt; Farbwelt und Materialausdruck als Familie, das exakte Produkt folgt in der Bemusterung.",
-                  "offerNoteEn": "Façade composition as chosen; colour and texture as a family, the exact product follows in the specification stage.",
+                  "offerNoteEn": "Facade composition as chosen; colour and texture as a family, the exact product follows in the specification stage.",
                   "scopeDe": "je Gebäude",
                   "scopeEn": "per building",
                   "costBasisDe": "Fassade & Dach",
-                  "costBasisEn": "Façade & roof",
+                  "costBasisEn": "Facade & roof",
                   "requiresDecision": false
                 },
                 {
@@ -7332,15 +7332,15 @@
               "byVariant": {
                 "FAC_FULL_TIMBER": {
                   "summaryDe": "Durchgehende Holzfassade · Farbwelt und Materialausdruck als Familie",
-                  "summaryEn": "Full timber façade · colour and texture as a family"
+                  "summaryEn": "Full timber facade · colour and texture as a family"
                 },
                 "FAC_FULL_RENDER": {
                   "summaryDe": "Durchgehende Putzfassade · Farbwelt und Materialausdruck als Familie",
-                  "summaryEn": "Full rendered façade · colour and texture as a family"
+                  "summaryEn": "Full rendered facade · colour and texture as a family"
                 },
                 "FAC_FULL_CLINKER": {
                   "summaryDe": "Durchgehende Klinkerfassade · Farbwelt und Materialausdruck als Familie",
-                  "summaryEn": "Full clinker-brick façade · colour and texture as a family"
+                  "summaryEn": "Full clinker-brick facade · colour and texture as a family"
                 },
                 "FAC_GF_RENDER_UPPER_TIMBER": {
                   "summaryDe": "Erdgeschoss Putz · Obergeschosse Holz · Farbwelt und Materialausdruck als Familie",
@@ -7444,13 +7444,13 @@
                     "variant": "ROOF_NON_GREEN"
                   },
                   "whyDe": "Das Geld sitzt in der Position „Fassade & Dach“ des Fassadenaufbaus; die Begrünung wird dort mitgetragen und hat keinen eigenen Betrag.",
-                  "whyEn": "The money sits in the façade composition’s “Façade & roof” position; greening is carried there and has no amount of its own.",
+                  "whyEn": "The money sits in the facade composition’s “Facade & roof” position; greening is carried there and has no amount of its own.",
                   "offerNoteDe": "Begrüntes bzw. nicht begrüntes Dach und Zugangsart im Angebot; Bepflanzung, Belag und System später.",
                   "offerNoteEn": "Green or non-green roof and access mode in the offer; planting, paving and system later.",
                   "scopeDe": "je Gebäude",
                   "scopeEn": "per building",
                   "costBasisDe": "Fassade & Dach",
-                  "costBasisEn": "Façade & roof",
+                  "costBasisEn": "Facade & roof",
                   "requiresDecision": false
                 },
                 {
@@ -7641,7 +7641,7 @@
                     "originEn": "Building baseline · building C · window concept not specified"
                   },
                   "whyDe": "Rahmensystem, Elementgröße und Fassadenschnittstelle werden fachlich geprüft; bis zur All3-Kalibrierung keine gesonderte Preisgrundlage.",
-                  "whyEn": "Frame system, element size and façade interface are domain-validated; no separate price basis until All3 calibration.",
+                  "whyEn": "Frame system, element size and facade interface are domain-validated; no separate price basis until All3 calibration.",
                   "offerNoteDe": "Rahmenfamilie im Angebot; Hersteller, Profil, Farbe, Fensterbank und Beschlag später.",
                   "offerNoteEn": "Frame family in the offer; manufacturer, profile, colour, sill and hardware later.",
                   "scopeDe": "je Gebäude",
@@ -7688,7 +7688,7 @@
                     "originEn": "Building baseline · building C · window concept not specified"
                   },
                   "whyDe": "Großformate lösen Statik-, Absturz-, Einbau- und Fassadenprüfungen aus.",
-                  "whyEn": "Large formats trigger structural, fall-protection, installation and façade checks.",
+                  "whyEn": "Large formats trigger structural, fall-protection, installation and facade checks.",
                   "offerNoteDe": "Formatpaket im Angebot; Maße, Teilungen und Flügelschema später.",
                   "offerNoteEn": "Format package in the offer; dimensions, divisions and sash schedule later.",
                   "scopeDe": "je Gebäude",
@@ -8061,7 +8061,7 @@
             "rows": [
               {
                 "decidedDe": "Fassadenaufbau, Farbwelt und Materialausdruck je Materialzone",
-                "decidedEn": "Façade composition, colour and texture family per material zone",
+                "decidedEn": "Facade composition, colour and texture family per material zone",
                 "deferredDe": "Hersteller, exakter RAL-/NCS-Ton, Stein- und Beschichtungscode, Brettprofil, Körnung, Verband und Fuge",
                 "deferredEn": "Manufacturer, exact RAL/NCS shade, brick and coating code, board profile, grain, bond and joint"
               },

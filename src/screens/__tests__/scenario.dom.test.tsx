@@ -319,7 +319,10 @@ describe('Сквозной сценарий продажи', () => {
     // about 80 px of a column that had none to spare, so the rail keeps the
     // immediate fact (`± n %`) and the money edges live on Kostendetails § A,
     // one click away. Uncertainty is reduced in footprint; it is not removed.
-    expect(document.querySelector('.a3-cockpit-basis')?.textContent ?? '')
+    // The slot is `.a3-cockpit-quality` since 15.09: the basis line was
+    // replaced by the hero's qualification — coverage plus the SAME interval
+    // — so this still asserts where the immediate fact lives, not a new one.
+    expect(document.querySelector('.a3-cockpit-quality')?.textContent ?? '')
       .toMatch(/±/)
     await user.click(screen.getByRole('button', { name: 'Alle Kostendetails' }))
     expect(await screen.findByText(/6\.156\.000/)).toBeInTheDocument()
@@ -383,7 +386,7 @@ describe('Сквозной сценарий продажи', () => {
     // Daten gehören.
     const journey = screen.getByRole('navigation', { name: 'Projektablauf' })
     expect(journey.querySelectorAll('.a3-wfn-stage')).toHaveLength(3)
-    expect(within(journey).getByText('Projektverständnis')).toBeInTheDocument()
+    expect(within(journey).getByText('Projekt-Checkliste')).toBeInTheDocument()
     expect(within(journey).queryByText('Konfigurieren')).toBeNull()
     expect(screen.getAllByText('Blockierende strittige Angaben').length).toBeGreaterThan(0)
 

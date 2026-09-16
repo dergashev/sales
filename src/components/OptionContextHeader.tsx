@@ -1,9 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { hasV3Surfaces } from '../lib/variantLock'
 import { configForOption, useStore } from '../state/store'
 import { scopeSelectedIds } from '../state/optionBuildingScope'
 import {
   optionLifecycleState,
   optionOpenDestination,
+  BASE_OPTION_AUTO_NAME,
+  optionDisplayName,
   orderedOptions,
 } from '../state/optionLifecycle'
 import { optionLifecycleBadge } from './optionLabels'
@@ -95,7 +98,8 @@ export function OptionContextHeader() {
   const headingRef = useRef<HTMLParagraphElement>(null)
   const { reduced } = useSemanticMotion()
   const optionId = s.activeOptionId
-  const option = s.options.find((o) => o.id === optionId)
+  const optionIndex = s.options.findIndex((o) => o.id === optionId)
+  const option = optionIndex >= 0 ? s.options[optionIndex] : undefined
   const disclosure = useBaselineDisclosure()
 
   /**
@@ -152,7 +156,13 @@ export function OptionContextHeader() {
           {...{ [OPTION_HEADING_ATTR]: true }}
           className="a3-optctx-name"
         >
-          {option.name}
+          {/* One name for one Option, wherever it is read: the base Option
+              answers to its own label here exactly as it does in the
+              collection and in the switcher. */}
+          {hasV3Surfaces(s.navVariant) && optionIndex === 0
+            && option.name === BASE_OPTION_AUTO_NAME
+            ? t('vr3.option.baseName')
+            : option.name}
         </p>
         <p className="a3-optctx-meta">{facts.join(' · ')}</p>
         {disclosure.drifted && (
@@ -254,7 +264,11 @@ function OptionSwitcher() {
                     }
                   }}
                 >
-                  <span className="a3-optsw-name">{row.name}</span>
+                  <span className="a3-optsw-name">
+                    {hasV3Surfaces(s.navVariant)
+                      ? optionDisplayName(row, t('vr3.option.baseName'))
+                      : row.name}
+                  </span>
                   <span className="a3-optsw-state">
                     <span aria-hidden="true">{entry ? `${entry.sign} ` : ''}</span>
                     {entry ? entry.label : ''}

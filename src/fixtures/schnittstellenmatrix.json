@@ -1,0 +1,1692 @@
+{
+ "source": "14. September 2026 – Schnittstellenmatrix.xlsx · Master",
+ "groups": [
+  {
+   "nr": "1",
+   "label": "Gebühren, Abgaben, Beiträge und Zuschüsse",
+   "notRequired": "no",
+   "ag": "no",
+   "an": "no",
+   "children": [
+    {
+     "nr": "1.1",
+     "label": "Gebühren der Bauanfrage / Baugenehmigung",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "1.1.1",
+       "label": "Gebühren für Bauvorbescheid",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.1.2",
+       "label": "Gebühren für Baugenehmigung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.1.3",
+       "label": "Gebühren für Befreiungsgenehmigungen",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.1.4",
+       "label": "Gebühren für Einzelzulassungen (Für durch AG/AN gewählte Bauteile / Planungen, Verursacherprinzip)",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "conditional",
+       "children": []
+      },
+      {
+       "nr": "1.1.5",
+       "label": "Genehmigungsgebühren für Sondergutachter (RLT-, Entrauchungsplanung etc.)",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.1.6",
+       "label": "Gebühren der Entwässerungsgenehmigung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.1.7",
+       "label": "Gebühren der Lüftungsgenehmigung (falls erforderlich)",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.1.8",
+       "label": "Genehmigungsgebühren für Nutzungsanträge",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.1.9",
+       "label": "Genehmigungsgebühren bei Änderungen der Planung auf Veranlassung des AN",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      }
+     ]
+    },
+    {
+     "nr": "1.2",
+     "label": "Vermessungsleistungen",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "1.2.1",
+       "label": "Grundstücksvermessung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.2.2",
+       "label": "Amtlicher Lageplan zum Bauantrag",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.2.3",
+       "label": "Grundstücksabsteckungen durch den Vermesser",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "1.2.4",
+       "label": "Baukörpereinmessung zum Baubeginn (Höhenkote und 2 Hauptachsen)",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "1.2.5",
+       "label": "Übergebene Eckpunkte und Höhen der Vermessung gemäß 1.2.3/1.2.4 übernehmen und verantwortliche Sicherung aller Punkte, Fluchten und Höhen bis zur Fertigstellung",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "1.2.6",
+       "label": "für die Bauabwicklung erforderliche Gebäudevermessungen",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "1.2.7",
+       "label": "Flächenaufmaß der Außenanlagen für die Bewirtschaftung (Grünpflege, Entwässerung, Winterdienst, etc.)",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.2.8",
+       "label": "Baukörpereinmessung zur Übernahme in das bauaufsichtliche Bestandsverzeichnis (Kataster)",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      }
+     ]
+    },
+    {
+     "nr": "1.3",
+     "label": "Inanspruchnahme öffentlicher oder privater Flächen",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "1.3.1",
+       "label": "Koordination bei Inanspruchnahme öffentlicher oder privater Flächen",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.3.2",
+       "label": "Kosten zu vorgenannter Position",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.3.3",
+       "label": "Verkehrstechnische Regelungen, Absperrungen, Umleitungen während der Bauausführung durch All3",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "1.3.4",
+       "label": "Anträge für Veränderungen oder Herstellung von Gehwegen, Bordsteineinfahrten, Gehwegüberfahrten für den temporären Baustellenbetrieb (Baustellenüberfahrt).",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "1.3.5",
+       "label": "Genehmigungskosten für die beiden vorigen Positionen.",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.3.6",
+       "label": "Beseitigung der Schäden, die in der Bauzeit nachweislich durch den AN entstanden sind.",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "1.3.7",
+       "label": "Anträge und Kosten für Veränderungen oder Herstellung von Gehwegen, Bordsteineinfahrten, Gehwegüberfahrten für die endgültige Herstellung der Gehwegüberfahrten",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.3.8",
+       "label": "Behördliche Genehmigung von Unterfangungen an Nachbargrundstücken",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.3.9",
+       "label": "Privatrechtliche Genehmigung von Unterfangungen an Nachbargrundstücken",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.3.10",
+       "label": "Sondernutzungsgebühren für bleibende Über- und Unterbauungen, Teile des Baugrubenverbaus des öffentlichen Straßenlandes",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.3.11",
+       "label": "Sondernutzungsgebühren für die Baugrubensicherung",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "1.3.12",
+       "label": "Sondernutzungsgebühren für Nutzungen des öffentlichen Straßenlandes für Baustelleneinrichtung",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "1.3.13",
+       "label": "Anträge, und Kosten für Anmietung öffentlicher oder privater Flächen für den Baubetrieb oder die Baustelleneinrichtung",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "1.3.14",
+       "label": "Antragsgebühren für die vorige Position",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.3.15",
+       "label": "Anträge, Koordination für temporäre Änderungen des ÖPNV (Verlegung von Haltestellen, Änderungen an Oberleitungen, Gleisüberfahrten etc.)",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "1.3.16",
+       "label": "Antragsgebühren und Kosten für die Maßnahmen der vorigen Position",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      }
+     ]
+    },
+    {
+     "nr": "1.4",
+     "label": "Anschlußgebühren / Erschließungskosten/ Beiträge und Baukostenzuschüsse",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "1.4.1",
+       "label": "Straßenanliegerbeiträge",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.4.2",
+       "label": "Beantragung / Koordination Versorgeranschlüsse",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "no",
+       "children": [
+        {
+         "nr": "1.4.2.1",
+         "label": "Anträge, Koordination und daraus resultierende Kosten für Versorgung der Baustelle für die Medien Wasser, Abwasser, Strom, Fernwärme und/oder Gas, Telefon/Fax/Internet; Bauheizung",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "1.4.2.2",
+         "label": "Anschluss und Vorhalten der Vorposition",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "1.4.2.3",
+         "label": "Anträge auf Entsorgung des Regenwassers",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "no",
+         "children": []
+        },
+        {
+         "nr": "1.4.2.4",
+         "label": "Anträge auf Entsorgung des Schmutzwassers",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "no",
+         "children": []
+        },
+        {
+         "nr": "1.4.2.5",
+         "label": "Anträge auf Versorgung des fertigen Objekts für die Medien Wasser, Strom, Gas inkl Übernahme der Anschlussbeiträge Abstimmungen mit AG-Energieversorger",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "no",
+         "children": []
+        },
+        {
+         "nr": "1.4.2.6",
+         "label": "Anträge auf Versorgung des fertigen Objekts für die Medien Fernwärme, BHKW inkl Übernahme der Anschlussbeiträge",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "no",
+         "children": [
+          {
+           "nr": "1.4.2.6.1",
+           "label": "Zuarbeit zur Vorposition Abstimmung mit AG bzw.Contractor des AG während der Planung",
+           "notRequired": "no",
+           "ag": "no",
+           "an": "yes",
+           "children": []
+          }
+         ]
+        },
+        {
+         "nr": "1.4.2.7",
+         "label": "Anträge auf Versorgung des fertigen Objekts für die Medien TV/Internet/Telefon inkl Übernahme der Anschlussbeiträge",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "no",
+         "children": []
+        }
+       ]
+      },
+      {
+       "nr": "1.4.3",
+       "label": "Koordination und Abstimmung der Anschlussleitungen für die Pos. 1.4.2.3 - 1.4.2.7",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "1.4.4",
+       "label": "Anschlussgebühren / Baukostenzuschüsse für die Pos. 1.4.2.3 - 1.4.2.7",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.4.5",
+       "label": "Bauleistungen ab den Übergabepunkten der öffentlichen Versorgungseinrichtungen im HA-Raum des Gebäudes",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "no",
+       "children": [
+        {
+         "nr": "1.4.5.1",
+         "label": "Kaltwasser-Versorgungsleitungen Verlegung der Leitungen ab Schnittstelle Zähler: AN",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "1.4.5.2",
+         "label": "Beantragen, Lieferung und Montage der Zähler zu vorgenannter Position Vorbereitung der Anträge: AN Unterschrift + Einreichung bei städtischen Versorger: AG Montage in Abstimmung mit dem Versorger: AN",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "1.4.5.3",
+         "label": "Abschließende Hygienemessung mit Dokumentation",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "1.4.5.4",
+         "label": "Fernwärme mit Lieferung und Montage Übergabestation: Vorrüstung der Versorgung außerhalb des Gebäudes: AG Leitungsführung in den Technikraum inkl. Mauerdurchführung und Übergabestation: AG Weiterführung der Versorgung ab Übergabestation bis zur Entnahmestelle: AN Abstimmung mit AG-Energieversorger: AN",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "1.4.5.5",
+         "label": "Beantragen, Lieferung und Montage der Zähler zu vorgenannter Position: AG Abstimmungen mit AG-Energieversorger: AN",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "1.4.5.6",
+         "label": "Schmutzwasser AN: Entwässerung des Schmutzwassers über Fallleitungen, die Entlüftung wird über Dach geführt. Entwässerungsleitungen inkl. Grundleitungen und Sammelleitungen bis Übergabeschacht",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "1.4.5.7",
+         "label": "Schmutzwasser AG: Alle für die Entwässerung des Gebäudes notwendigen Leitungen und Kanäle ab dem Übergabepunkt (siehe Vorposition) bis zu den Anschlusspunkten an die öffentlichen Netze erfolgen durch den AG. Diese Arbeiten umfassen sowohl Leistungen auf dem Baugrundstück als auch auf öffentlichem Grund. Abstimmungen und Abnahmen durch die für die städtische Entwässerung zuständige Stelle sind durch den AG eigenverantwortlich zu organisieren und durchzuführen.",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "no",
+         "children": []
+        },
+        {
+         "nr": "1.4.5.8",
+         "label": "Regenwasser AN: wird Regenwasser komplett auf eigenem Grund versickert: alle Leistungen liegen beim AN, falls die Außenanlagen Auftragsbestandteil sind",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "1.4.5.9",
+         "label": "entfällt",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "no",
+         "children": []
+        },
+        {
+         "nr": "1.4.5.10",
+         "label": "Elektrik: (falls ein Trafo installiert werden muss) Herrichten Traforaum für SW durch AN. Verlegung der Leitungen ab Schnittstelle Trafo / SW",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "1.4.5.11",
+         "label": "Beantragung und Montage der benötigten Zähler Vorbereitung der Anträge: AN Unterschrift + Einreichung bei städtischen Versorger: AG Montage in Abstimmung mit dem Versorger: AN",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "yes",
+         "children": []
+        }
+       ]
+      },
+      {
+       "nr": "1.4.6",
+       "label": "Breitband / Multimedia / Telefon:",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "no",
+       "children": [
+        {
+         "nr": "1.4.6.1",
+         "label": "Antrag auf Anschluss: AG Koordination Anschluss: AN Installation ab Verteiler im HA: AN",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "yes",
+         "children": []
+        }
+       ]
+      },
+      {
+       "nr": "1.4.7",
+       "label": "Beantragen von Zwischen- und Untermesseinrichtungen (Heizkostenverteiler, Wärmemengenzähler, Warmwasser, Kaltwasser, Rauchwarnmelder, etc.) Abstimmung mit AG-seitigen Contractor: AN",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      }
+     ]
+    },
+    {
+     "nr": "1.5",
+     "label": "Sonstige Gebühren und Kosten",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "1.5.1",
+       "label": "Prüfgebühren für Sondergutachter und Institute",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "no",
+       "children": [
+        {
+         "nr": "1.5.1.1",
+         "label": "Prüfgebühr des Verbands dt. Sachversicherer (VdS) für die Sprinkleranlagen / Feuerlöschanlagen (FLA)",
+         "notRequired": "no",
+         "ag": "conditional",
+         "an": "no",
+         "children": []
+        },
+        {
+         "nr": "1.5.1.2",
+         "label": "Prüfgebühr des TÜV/Dekra für die Aufzugsanlagen",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "conditional",
+         "children": []
+        }
+       ]
+      },
+      {
+       "nr": "1.5.2",
+       "label": "Prüfgebühren gem. Prüfverordnung (PVO) (z.B. bei KiTas, Hochhäusern, Altenpflegeheimen, betreutem Wohnen, Großgaragen, etc.)",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "no",
+       "children": [
+        {
+         "nr": "1.5.2.1",
+         "label": "Prüfgebühr des Sachverständigen für Brandmeldeanlage (BMA), Brandwarnanlage (BWA)",
+         "notRequired": "no",
+         "ag": "conditional",
+         "an": "no",
+         "children": []
+        },
+        {
+         "nr": "1.5.2.2",
+         "label": "Prüfgebühr des Sachverständigen für Netzersatzanlage (NEA), Starkstromanlagen und Sicherheitsbeleuchtung",
+         "notRequired": "no",
+         "ag": "conditional",
+         "an": "no",
+         "children": []
+        }
+       ]
+      },
+      {
+       "nr": "1.5.3",
+       "label": "Prüfgebühr des Sachverständigen für Rauch-Wärme-Abzugsanlagen (RWA), Natürliche Rauchabzugsanlagen (NRA), Rauchdruckanlagen (RDA)",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.5.4",
+       "label": "Prüfgebühren des Prüfingenieurs der Leistungen der Phasen 1-4 (Bauantrag, Statik, etc.)",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.5.5",
+       "label": "Prüfgebühren des Prüfingenieurs der Leistungen der Phasen 5 (Schal- und Bewehrungsplanung)",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.5.6",
+       "label": "Prüf- und Abnahmegebühren für veranlasste Änderungen (Verursacherprinzip)",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.5.7",
+       "label": "Abnahmegebühren des Prüfingenieurs in der Bauausführung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.5.8",
+       "label": "Prüfgebühren des Prüfingenieurs für die Gründungsstatik der Sondergründung (Bohrpfähle, HDI-Sohle etc.)",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "1.5.9",
+       "label": "Abnahmen und Gebühren von Sondergutachten TÜV, Gewerbeaufsichtsamt, VDS u. ä. Institutionen",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "nr": "2",
+   "label": "Architekten- und Ingenieurleistungen",
+   "notRequired": "no",
+   "ag": "no",
+   "an": "no",
+   "children": [
+    {
+     "nr": "2.1",
+     "label": "Objektplanung Alle für ein vertragsgemäßes Werk erforderlichen Planungsleistungen, soweit für die Ausführung notwendig in Anlehnung an die HOAI",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "2.1.1",
+       "label": "Planung Bauantrag (analog Leistungsphasen 1 bis 4 HOAI), die zur Erlangung einer Baugenehmigung notwendig sind einschl. Fachplanung für Brand-, Wärme-, Schallschutz (keine HOAI Planung)",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": [
+        {
+         "nr": "2.1.1.1",
+         "label": "Integration der All3-Bauweise in die Genehmigungsplanung einschl. der Fachplanung",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        }
+       ]
+      },
+      {
+       "nr": "2.1.2",
+       "label": "Integration der All3-Bauweise in die Ausführungsplanung (analog Leistungsphase 5 HOAI), die zur schlüsselfertigen Ausführung des Projektes notwendig sind einschl. Fachplanung für Brand-, Wärme-, Schallschutz (keine HOAI Planung)",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "2.1.3",
+       "label": "Prüfung der Planung durch SiGeKo",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "2.1.4",
+       "label": "Leistungsphase 8 - Objektüberwachung",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "no",
+       "children": [
+        {
+         "nr": "2.1.4.1",
+         "label": "Werk- und Montageplanung",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.1.4.2",
+         "label": "SiGeKo",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.1.4.3",
+         "label": "Objektüberwachung einschließlich Qualitätsüberwachung, Gewerkekoordination und Terminüberwachung",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.1.4.4",
+         "label": "Fachbauleitung gemäß Landesbauordnung einschließlich Qualitätsüberwachung, interne technische und kaufmännische Oberleitung",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.1.4.5",
+         "label": "Zusammenstellung der Revisionsunterlagen und Objektdokumentation, Schlussdokumentation der Übergabe",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.1.4.6",
+         "label": "Flucht- und Rettungswegpläne während LP8",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "conditional",
+         "children": []
+        },
+        {
+         "nr": "2.1.4.7",
+         "label": "Feuerwehrpläne, Feuerwehrlaufkarten während LP8",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "conditional",
+         "children": []
+        },
+        {
+         "nr": "2.1.4.8",
+         "label": "Einholen der Gewährleistungsbürgschaften",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        }
+       ]
+      },
+      {
+       "nr": "2.1.5",
+       "label": "Leistungsphase 9 - Objektbetreuung",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "no",
+       "children": [
+        {
+         "nr": "2.1.5.1",
+         "label": "Gewährleistungsabwicklung, Mängelbeseitigung",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.1.5.2",
+         "label": "Flucht- und Rettungswegpläne für fertiges Objekt",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "no",
+         "children": []
+        },
+        {
+         "nr": "2.1.5.3",
+         "label": "Feuerwehrpläne, Feuerwehrlaufkarten für fertiges Objekt",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "no",
+         "children": []
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "nr": "2.2",
+     "label": "Tragwerksplanung",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "2.2.1",
+       "label": "Leistungsphase 1 - Grundlagenermittlung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "2.2.2",
+       "label": "Leistungsphase 2 - Vorplanung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "2.2.3",
+       "label": "Leistungsphase 3 - Entwurfsplanung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "2.2.4",
+       "label": "Leistungsphase 4 - Genehmigungsplanung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "2.2.5",
+       "label": "Leistungsphase 1 - 4 Tragwerksplanung, Integration der All3-Bauweise in die Genehmigungsplanung, aufstellen einer prüfbaren statischen Berechnung für die Obergeschosse",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": [
+        {
+         "nr": "2.2.5.1",
+         "label": "WU-Statik für sämtliche Tiefbau-Bauteile wie z.B. Kellerwände, Sohlen, Bodenplatte (Bewehrung, Rissbreitenbegrenzung, Betongüte, etc.)",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.2.5.2",
+         "label": "WU-Konzept für sämtliche Tiefbau-Bauteile wie z.B. Kellerwände, Sohlen, Bodenplatte (Fugendichtbänder, Manschetten, etc.)",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        }
+       ]
+      },
+      {
+       "nr": "2.2.6",
+       "label": "Leistungsphase 5 - Ausführungsplanung",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "no",
+       "children": [
+        {
+         "nr": "2.2.6.0",
+         "label": "Vollständige Planungsleistungen (analog Leistungsphase 5 HOAI), die zur schlüsselfertigen Ausführung des Projektes notwendig sind (keine HOAI Planung) für die Obergeschosse",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.2.6.1",
+         "label": "Vollständige Planungsleistungen (analog Leistungsphase 5 HOAI), die zur schlüsselfertigen Ausführung des Projektes notwendig sind (keine HOAI Planung) für die Untergeschosse",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "no",
+         "children": []
+        },
+        {
+         "nr": "2.2.6.2",
+         "label": "Schal- und Bewehrungspläne, Stahl- und Mattenlisten",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.2.6.3",
+         "label": "Verankerungen der Fassaden",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.2.6.4",
+         "label": "Stahlbauzeichnungen",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.2.6.5",
+         "label": "Fertigteilzeichnungen und konstruktive Nachweise",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.2.6.6",
+         "label": "Statischer Nachweis für Balkon- und Treppenhausgeländer",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.2.6.7",
+         "label": "Nachweise für vom AN veranlasste Planänderungen",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.2.6.8",
+         "label": "Statische Nachweise für temporäre Bauzustände",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "nr": "2.3",
+     "label": "Ingenieurleistungen der TGA-Planung für H-L-S-E-F, Förderanlagen etc.",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "2.3.1",
+       "label": "Leistungsphase 1 - Grundlagenermittlung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "2.3.2",
+       "label": "Leistungsphase 2 - Vorplanung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "2.3.3",
+       "label": "Leistungsphase 3 - Entwurfsplanung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "2.3.4",
+       "label": "Leistungsphase 4 - Genehmigungsplanung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": [
+        {
+         "nr": "2.3.4.1",
+         "label": "Integration der All3-Bauweise in die Genehmigungsplanung",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        }
+       ]
+      },
+      {
+       "nr": "2.3.5",
+       "label": "Leistungsphase 5 - Ausführungsplanung",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "no",
+       "children": [
+        {
+         "nr": "2.3.5.1",
+         "label": "Integration der All3-Bauweise in die Ausführungsplanung (analog Leistungsphase 5 HOAI), die zur schlüsselfertigen Ausführung des Projektes notwendig sind einschl. aller Fachplaner und Gutachter (keine HOAI Planung)",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.3.5.2",
+         "label": "Vom AN benötigte besondere Leistungen der Ausführungsplanung und Detailplanung",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.3.5.3",
+         "label": "Sonderleistung - vom AN veranlasste Planänderungen",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        }
+       ]
+      },
+      {
+       "nr": "2.3.6",
+       "label": "Leistungsphase 8 - Objektüberwachung",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "no",
+       "children": [
+        {
+         "nr": "2.3.6.1",
+         "label": "Werk- und Montageplanung",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.3.6.2",
+         "label": "- entfällt -",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "no",
+         "children": []
+        },
+        {
+         "nr": "2.3.6.3",
+         "label": "Objektüberwachung einschließlich Qualitätsüberwachung, Gewerkekoordination und Terminüberwachung",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.3.6.4",
+         "label": "Fachbauleitung gemäß Landesbauordnung einschließlich Qualitätsüberwachung, interne technische und kaufmännische Oberleitung",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.3.6.5",
+         "label": "Leitungsmessungen, Prüfprotokolle",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.3.6.6",
+         "label": "Zusammenstellung der Revisionsunterlagen und Objektdokumentation, Schlussdokumentation der Übergabe",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.3.6.7",
+         "label": "Einweisungen der Betreiber des AG",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        },
+        {
+         "nr": "2.3.6.8",
+         "label": "Beibringung von Wartungsverträgen",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        }
+       ]
+      },
+      {
+       "nr": "2.3.7",
+       "label": "Leistungsphase 9 - Objektbetreuung",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "no",
+       "children": [
+        {
+         "nr": "2.3.7.1",
+         "label": "Phase 9.1 - Gewährleistungsabwicklung, Mängelbeseitigung Gewährleistungsmanagement Workflow: AG",
+         "notRequired": "no",
+         "ag": "no",
+         "an": "yes",
+         "children": []
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "nr": "2.4",
+     "label": "Planungleistungen Außenanlagen",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "2.4.1",
+       "label": "Leistungsphase 1 - Grundlagenermittlung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "2.4.2",
+       "label": "Leistungsphase 2 - Vorplanung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "2.4.3",
+       "label": "Leistungsphase 3 - Entwurfsplanung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "2.4.4",
+       "label": "Leistungsphase 4 - Genehmigungsplanung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "2.4.5",
+       "label": "Leistungsphase 5 - 8 Ausführungsplanung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "nr": "3",
+   "label": "Gutachten, Sachverständige sofern erforderlich",
+   "notRequired": "no",
+   "ag": "no",
+   "an": "no",
+   "children": [
+    {
+     "nr": "3.1",
+     "label": "Baugrund und Gründung Risiko Baugrund obliegt über die gesamte Projektdauer beim AG",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "3.1.1",
+       "label": "Erstellung von Schürfgruben",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "no",
+       "children": [
+        {
+         "nr": "3.1.1.1",
+         "label": "Untersuchung des Baugrund im Bereich von Nachbargebäuden",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "no",
+         "children": []
+        },
+        {
+         "nr": "3.1.1.2",
+         "label": "Untersuchung des Baugrund auf Medienfreiheit",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "no",
+         "children": []
+        }
+       ]
+      },
+      {
+       "nr": "3.1.2",
+       "label": "Durchführung von Probebohrungen",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.1.3",
+       "label": "Erstellung des Baugrund-, Gründungs- und Schadstoffgutachtens",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.1.4",
+       "label": "Erkundung der Grundwasserverhältnisse",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.1.5",
+       "label": "Erstellung der Setzungsberechnungen: AG Mitwirkung durch Lastangaben: AN",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "3.1.6",
+       "label": "Erstellung der Grundwasseranalysen",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.1.7",
+       "label": "Hydraulische Berechnung zur Durchführung der Grundwasserhaltung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.1.8",
+       "label": "Erstellung der Antragsunterlagen für Sondergründungen (Bohrpfähle, HDI-Sohle etc.)",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.1.9",
+       "label": "Ausführungsplanung der Auftriebssicherung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      }
+     ]
+    },
+    {
+     "nr": "3.2",
+     "label": "Baugrube",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "3.2.1",
+       "label": "Kampfmittelfreiheit",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "no",
+       "children": [
+        {
+         "nr": "3.2.1.1",
+         "label": "Luftbildauswertung",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "no",
+         "children": []
+        },
+        {
+         "nr": "3.2.1.2",
+         "label": "Kampfmittelsondierung im Vorwege",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "no",
+         "children": []
+        },
+        {
+         "nr": "3.2.1.3",
+         "label": "Herstellung der freigemessenen Kampfmittelfreiheit vor Baubeginn des AN",
+         "notRequired": "no",
+         "ag": "yes",
+         "an": "no",
+         "children": []
+        }
+       ]
+      },
+      {
+       "nr": "3.2.2",
+       "label": "Erstellung Baugrube einschließlich (ggf.) Verbau einschließlich aller dafür erforderlichen Planungen",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "3.2.3",
+       "label": "Leitungsabfrage Baufeld und öffentlicher Raum",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.2.4",
+       "label": "Koordination und Kosten für Sicherung/ Umlegung bekannter Leitungen auf dem Baufeld",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.2.5",
+       "label": "Koordination Leitungsumlegung Öffentlicher Raum, Kosten trägt der AG",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      }
+     ]
+    },
+    {
+     "nr": "3.3",
+     "label": "Sonstige Sachverständige",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "3.3.1",
+       "label": "Baumsachverständiger, Baubiologe, Ornithologe vor Baubeginn und begleitend während der Bauphase",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.3.2",
+       "label": "aus vorherigen Position geforderte Maßnahmen , deren Umsetzung sowie Kostenübernahme",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      }
+     ]
+    },
+    {
+     "nr": "3.4",
+     "label": "Zertifizierung",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "3.4.1",
+       "label": "Auditor",
+       "notRequired": "yes",
+       "ag": "no",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.4.2",
+       "label": "Kosten der Zertifizierungsstelle, Pre-Check und Zertifikat",
+       "notRequired": "yes",
+       "ag": "no",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.4.3",
+       "label": "LCA, LCC, Ökobilanz",
+       "notRequired": "yes",
+       "ag": "no",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.4.4",
+       "label": "Tageslichtsimulation",
+       "notRequired": "yes",
+       "ag": "no",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.4.5",
+       "label": "Behaglichkeitsberechnungen",
+       "notRequired": "yes",
+       "ag": "no",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.4.6",
+       "label": "Wärmebrückenberechnungen",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "3.4.7",
+       "label": "Sommerlicher Wärmeschutznachweis",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "3.4.8",
+       "label": "EPD Bauprodukte, Dokumentation",
+       "notRequired": "yes",
+       "ag": "no",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.4.9",
+       "label": "zusätzliche Planung anderer Nutzungen und Nachweise der Drittverwendungsfähigkeit",
+       "notRequired": "yes",
+       "ag": "no",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.4.10",
+       "label": "Biodiversitätskonzept",
+       "notRequired": "yes",
+       "ag": "no",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.4.11",
+       "label": "Mobilitätskonzept",
+       "notRequired": "yes",
+       "ag": "no",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.4.12",
+       "label": "Fördermittelberatungen",
+       "notRequired": "yes",
+       "ag": "no",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.4.13",
+       "label": "Innenraumluftmessungen",
+       "notRequired": "yes",
+       "ag": "no",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.4.14",
+       "label": "Klimarisikoanalysen",
+       "notRequired": "yes",
+       "ag": "no",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "3.4.15",
+       "label": "Konzept Barrierefreiheit",
+       "notRequired": "yes",
+       "ag": "no",
+       "an": "no",
+       "children": []
+      }
+     ]
+    },
+    {
+     "nr": "3.10",
+     "label": "Nachweis äußeres Gleichgewicht der Auftriebssicherung",
+     "notRequired": "no",
+     "ag": "yes",
+     "an": "no",
+     "children": []
+    },
+    {
+     "nr": "3.11",
+     "label": "Antrag auf Wasserhaltung",
+     "notRequired": "no",
+     "ag": "yes",
+     "an": "no",
+     "children": []
+    },
+    {
+     "nr": "3.12",
+     "label": "Antrag Grundwasserabsenkung",
+     "notRequired": "no",
+     "ag": "yes",
+     "an": "no",
+     "children": []
+    },
+    {
+     "nr": "3.13",
+     "label": "Gebühren für Anträge, Wasseraufbereitung und Einleitmengen (Grundwasserabsenkung bzw. geschlossene Wasserhaltung)",
+     "notRequired": "no",
+     "ag": "yes",
+     "an": "no",
+     "children": []
+    }
+   ]
+  },
+  {
+   "nr": "4",
+   "label": "Sonstiges",
+   "notRequired": "no",
+   "ag": "no",
+   "an": "no",
+   "children": [
+    {
+     "nr": "4.1",
+     "label": "Beweissicherungen",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "4.1.1",
+       "label": "Erstbegehung vor Übergabe des Baufeldes (Nachbargebäude innen / außen, öffentliche Flächen etc.)",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "4.1.2",
+       "label": "Gebäudedokumentation vor Maßnahmenbeginn inkl. Kostenübernahme",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "4.1.3",
+       "label": "Beweissicherung von Sonderbauteilen, z.B. von Bahnanlagen",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "4.1.3",
+       "label": "Endbegehung nach Gesamtfertigstellung vor der Abnahme",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "yes",
+       "children": []
+      }
+     ]
+    },
+    {
+     "nr": "4.2",
+     "label": "Herrichten Grundstück",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "4.2.1",
+       "label": "Baumrodungen",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "4.2.2",
+       "label": "Leitungsverlegungen",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      },
+      {
+       "nr": "4.2.3",
+       "label": "entfernen von Einfriedungen",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      }
+     ]
+    },
+    {
+     "nr": "4.3",
+     "label": "Bauschild",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "4.3.1",
+       "label": "Gestaltung: AG Bestellung, Kostenübernahme: AN",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "4.3.2",
+       "label": "Integration in die Baustelleneinrichtung, Koordination mit dem Aufsteller vor Ort",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      }
+     ]
+    },
+    {
+     "nr": "4.4",
+     "label": "Baumschutzmaßnahmen",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "4.4.1",
+       "label": "Planung: AG Umsetzung und Kostenübernahme: AN",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "yes",
+       "children": []
+      }
+     ]
+    },
+    {
+     "nr": "4.5",
+     "label": "Grundsteinlegung und Richtfest",
+     "notRequired": "no",
+     "ag": "no",
+     "an": "no",
+     "children": [
+      {
+       "nr": "4.5.1",
+       "label": "Beräumen der Baustelle, sichere Zuwegung, Beleuchtung, Bereitstellung Wasser, Strom, Abwasser, Aufwendungen aus Bauunterbrechung, Richtspruch, Richtkranz",
+       "notRequired": "no",
+       "ag": "no",
+       "an": "yes",
+       "children": []
+      },
+      {
+       "nr": "4.5.2",
+       "label": "Musik, Verstärker, Catering, Unterhaltung",
+       "notRequired": "no",
+       "ag": "yes",
+       "an": "no",
+       "children": []
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

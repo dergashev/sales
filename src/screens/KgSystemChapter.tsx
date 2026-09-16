@@ -11,10 +11,10 @@ import {
   costAuthorityOf,
   dependencyBlocker,
   dependencySuspension,
-  derivedValue,
   isApplicable,
   kgCascadeFor,
   kgChapterOverview,
+  kgServiceAnswer,
   kgSystemProgress,
   quantityProblem,
   serviceById,
@@ -33,12 +33,12 @@ import {
   type KgServiceVariant,
   type KgSystemState,
 } from '../engine/kgConfiguration'
-import { kgCatalogueFor, responsibilityFor, useStore } from '../state/store'
-import { activeDocumentCount, demoProject } from '../state/projectAnalysis'
+import { kgCatalogueFor, useStore } from '../state/store'
 import { CONFIGURATOR_STEP } from '../state/chapters'
 import { localizeMoneyText, useT } from '../i18n'
+import { kgAnswerText } from '../lib/kgAnswerText'
 import {
-  NNBSP, formatDE, label as moneyLabel, present, quantityLabel,
+  NNBSP, formatDE, label as moneyLabel, present,
 } from '../engine/money'
 import { Button } from '../components/primitives'
 import { FormField } from '../components/designSystem'
@@ -47,13 +47,11 @@ import { ChoiceGroup, type ChoiceLayout, type ChoiceOption } from '../design-sys
 import { Dialog } from '../components/Dialog'
 import { useSemanticMotion } from '../design-system/motion'
 import {
-  BemusterungBoundary,
   DecisionEditor,
   DecisionQuiet,
   DecisionRow,
   DecisionValueRows,
   EvidenceSection,
-  RahmenBand,
   SystemDetailHeader,
   SystemOverviewSummary,
   SystemRow,
@@ -62,8 +60,6 @@ import {
   type SummaryTone,
 } from '../design-system/KGConfiguration'
 import { kgSolutionVisual, kgSystemPictogram } from '../config/kg-visuals'
-import { SegmentedControl } from '../components/controls'
-import { SelectField } from '../components/designSystem'
 
 /**
  * KG 400 as a FRIENDLY ENGINEERING-SOLUTION CONFIGURATOR (VR3-TGA-UX-00,
@@ -201,7 +197,6 @@ export function KgSystemChapter({ chapter, group }: {
   const en = s.uiLanguage === 'en'
   const catalogue = kgCatalogueFor(s)
   const decisions = s.kgConfig
-  const responsibility = responsibilityFor(s)
   const liveId = useId()
 
   /**
@@ -229,7 +224,6 @@ export function KgSystemChapter({ chapter, group }: {
   const [evidenceOpen, setEvidenceOpen] = useState<string | null>(null)
   const [naOpen, setNaOpen] = useState<string | null>(null)
   const [rahmenOpen, setRahmenOpen] = useState<string | null>(null)
-  const [bemOpen, setBemOpen] = useState(false)
   const [pending, setPending] = useState<
     { service: KgService; next: KgServiceDecisionRecord; cascade: KgCascade } | null
   >(null)
@@ -250,22 +244,77 @@ export function KgSystemChapter({ chapter, group }: {
     (id ? s.scopeBuildings.find((b) => b.id === id)?.name : undefined) ?? id ?? ''
 
   /**
-   * On arrival, the FIRST system that still owes a decision opens itself:
-   * real work is the strongest attention item, and a salesperson landing on
-   * a chapter with one open question should not have to find it.
+   * JEDES KAPITEL BEGINNT ZUGEKLAPPT (Owner, 16.09.2026).
+   *
+   * Bis dahin klappte die erste noch offene Anlage sich selbst auf. Der
+   * Gedanke war, dem Vertrieb die Arbeit zu zeigen; die Wirkung war, dass
+   * die Liste bei jedem Betreten anders aussah als beim letzten Mal und ein
+   * geöffneter Block die Übersicht verdeckte, bevor sie gelesen war. Die
+   * offene Entscheidung ist nicht unsichtbar geworden: die Zeile trägt
+   * `! 1 Entscheidung offen`, und die Kopfzeile zählt sie.
    */
   useEffect(() => {
-    setDraft(null); setEvidenceOpen(null); setNaOpen(null); setRahmenOpen(null); setBemOpen(false)
+    setDraft(null); setEvidenceOpen(null); setNaOpen(null); setRahmenOpen(null)
     setChosenBuilding(null)
-    if (!catalogue || !decisions) { setOpenSystem(null); return }
-    const landing = chapterForBuilding(chapter, landingBuilding)
-    const first = landing.groups.find((g) =>
-      kgSystemProgress(catalogue, decisions, g).state === 'open')
-    setOpenSystem(first?.id ?? null)
+    setOpenSystem(null)
     // The catalogue and the decisions are derived from these three keys; a
     // change of either without them is the same Option and must not reset.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group, s.opportunityId, s.activeOptionId])
+
+  /**
+   * AN EDIT ROUTE THAT ARRIVES AT THE DECISION, not merely at its chapter
+   * (owner, 16.09.2026 — the expandable `Leistungen` row in Final
+   * Validation).
+   *
+   * The review hands over ONE decision id (`kgFocusServiceId`). Arriving
+   * here that means three things, in this order: show the building the
+   * decision belongs to, open the system that holds it — every chapter
+   * opens collapsed — and put focus on its own change control, through the
+   * same `focusAfter` ref every in-chapter commit uses. The intent is
+   * cleared as soon as it is honoured, so it fires exactly once and a later
+   * manual visit is not hijacked by it.
+   *
+   * Declared AFTER the reset effect on purpose: that one runs on the same
+   * mount and closes every system, and the last writer wins.
+   */
+  useEffect(() => {
+    const wanted = s.kgFocusServiceId
+    if (!wanted) return
+    const holder = chapter.groups.find(
+      (candidate) => candidate.services.some((service) => service.id === wanted),
+    )
+    if (!holder) return
+    const service = holder.services.find((candidate) => candidate.id === wanted)!
+    if (service.buildingId && chapterBuildingIds(chapter).includes(service.buildingId)) {
+      setChosenBuilding(service.buildingId)
+    }
+    setOpenSystem(holder.id)
+    /**
+     * DEFERRED BY ONE TICK, for the same reason `ReviewSection`'s return
+     * route is: the application shell moves focus to the page heading on
+     * every navigation, and a parent's effects run after a child's. Claiming
+     * focus here synchronously means the shell overwrites it a moment later
+     * and the reader lands on the chapter title instead of on the decision
+     * they asked to edit — measured, not assumed.
+     *
+     * `focusDecision` rather than the `focusAfter` ref: that ref is honoured
+     * by an effect that runs in the same commit, which is precisely the
+     * timing that loses.
+     */
+    const timer = setTimeout(() => {
+      focusDecision(wanted, 'change')
+      // Cleared AFTER the focus, never before: clearing it is what changes
+      // this effect's dependency, and a clear on the way in ran this
+      // effect's own cleanup — which cancelled the timer that was about to
+      // do the work. Measured, in the DOM test beside it.
+      s.setKgFocusService(null)
+    }, 0)
+    return () => clearTimeout(timer)
+    // The intent is a one-shot; `chapter` is the page's own prop and `s` is
+    // the whole store, neither of which may re-run this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s.kgFocusServiceId])
 
   /** After a commit, focus lands where the contract says — across the re-render. */
   useEffect(() => {
@@ -280,24 +329,6 @@ export function KgSystemChapter({ chapter, group }: {
   const overview = kgChapterOverview(catalogue, decisions, visible)
   const identity = `KG${NNBSP}${group.slice(3)}`
 
-  /**
-   * A building switch replaces the building-scoped rows (storyboard 7). An
-   * open system stays open only where it still exists; otherwise the first
-   * system of the new building that owes a decision opens, exactly as on
-   * arrival. Focus is NOT moved — the user is operating the switch — and the
-   * live region states the new context once.
-   */
-  const switchBuilding = (id: string) => {
-    if (id === activeBuilding) return
-    s.previewOption(null)
-    setDraft(null); setEvidenceOpen(null); setNaOpen(null)
-    setChosenBuilding(id)
-    const next = chapterForBuilding(chapter, id)
-    const first = next.groups.find((g) =>
-      kgSystemProgress(catalogue, decisions, g).state === 'open')
-    setOpenSystem(first?.id ?? null)
-    setAnnouncement({ key: 'vr3.kg.building.announce', count: next.groups.length, name: buildingNameOf(id) })
-  }
 
   /* ── edit mode ───────────────────────────────────────────────────────── */
 
@@ -563,36 +594,17 @@ export function KgSystemChapter({ chapter, group }: {
     .map((governor) => label(governor.labelDe, governor.labelEn))
     .join(' · ')
 
-  const currentOf = (service: KgService, decision: KgServiceDecisionRecord): string => {
-    if (service.kind.kind === 'singleChoice') {
-      if (decision.state === 'undecided') return t('vr3.tga.decision.undecided')
-      const variant = currentVariantOf(service, decision)
-      return variant ? label(variant.labelDe, variant.labelEn) : label(service.summaryDe, service.summaryEn)
-    }
-    if (service.kind.kind === 'readOnlyRequired') {
-      if (service.derived) return derivedValue(catalogue, decisions, service, s.uiLanguage) ?? ''
-      return label(service.source?.valueDe, service.source?.valueEn)
-        || label(service.summaryDe, service.summaryEn)
-    }
-    if (decision.state === 'undecided') return t('vr3.tga.decision.undecided')
-    // A SCOPE decision answers in the domain's own words where the catalogue
-    // supplies them (`Nicht im All3-Leistungsumfang`), else the generic pair.
-    if (decision.state === 'notSelected') {
-      return label(service.excludeLabelDe, service.excludeLabelEn) || t('vr3.tga.decision.notIncluded')
-    }
-    if (service.kind.kind === 'quantity') {
-      // Grouped, and joined to its unit by rule 7's narrow no-break space.
-      // The raw store string belongs in the FIELD — printed on a reading
-      // line it says `9500 m²`, which is neither German nor rule 7.
-      return t('vr3.tga.decision.quantityOf', {
-        quantity: localizeMoneyText(quantityLabel(
-          decision.quantity ?? service.kind.baselineQuantity,
-          label(service.kind.unitDe, service.kind.unitEn),
-        ), s.uiLanguage),
-      })
-    }
-    return label(service.includeLabelDe, service.includeLabelEn) || t('vr3.tga.decision.included')
-  }
+  /**
+   * The words come from the ONE engine reading of "what is chosen here"
+   * (`kgServiceAnswer`), and only the two sentences the fixture does not
+   * word are resolved against the dictionary. Final Validation renders the
+   * same answer through `kgAnswerText`, so the collapsed decision row and
+   * the expanded review row cannot drift apart.
+   */
+  const currentOf = (service: KgService): string =>
+    kgAnswerText(
+      kgServiceAnswer(catalogue, decisions, service, s.uiLanguage), s.uiLanguage, t,
+    )
 
   /* ── the editor of one decision ─────────────────────────────────────── */
 
@@ -860,7 +872,7 @@ export function KgSystemChapter({ chapter, group }: {
         key={service.id}
         id={service.id}
         name={name}
-        current={currentOf(service, decision)}
+        current={currentOf(service)}
         relation={relation}
         price={pricePhraseOf(service, decision)}
         attention={unresolved ? 'open' : changed === true ? 'deviation' : undefined}
@@ -948,199 +960,7 @@ export function KgSystemChapter({ chapter, group }: {
     )
   }
 
-  /* ── the Rahmen band ────────────────────────────────────────────────── */
-
-  const buildings = s.scopeBuildings.filter((b) => s.scopeSelected[b.id])
-  const unresolvedInterfaces = responsibility?.unresolved.length ?? 0
-  // The count the Option inherited (the journalled baseline) where it is in
-  // memory; otherwise the live analysis, through the SAME function the
-  // baseline snapshot itself uses. Never a number authored into the fixture.
-  const sourceDocumentCount = (() => {
-    const project = demoProject(s.opportunityId)
-    const analysis = project ? s.projectAnalyses[project.id] : undefined
-    return s.projectBaseline?.documentCount
-      ?? (project && analysis ? activeDocumentCount(project, analysis) : 0)
-  })()
-
-  /**
-   * THE BUILDING SWITCH (DC-46): `SegmentedControl` up to three buildings,
-   * `<select>` beyond (LOCALE-004). Present only where the chapter decides
-   * per building and there is more than one building to decide for.
-   */
-  const buildingControl = buildingIds.length <= 1
-    ? undefined
-    : buildingIds.length <= 3
-      ? (
-        <SegmentedControl
-          legend={t('vr3.kg.band.buildingChoose')}
-          legendHidden
-          layout="inline"
-          size="compact"
-          value={activeBuilding ?? buildingIds[0]!}
-          options={buildingIds.map((id) => ({ value: id, label: buildingNameOf(id) }))}
-          onChange={switchBuilding}
-        />
-      )
-      : (
-        <SelectField
-          label={t('vr3.kg.band.buildingChoose')}
-          value={activeBuilding ?? ''}
-          onChange={(event) => switchBuilding(event.target.value)}
-        >
-          {buildingIds.map((id) => <option key={id} value={id}>{buildingNameOf(id)}</option>)}
-        </SelectField>
-      )
-
-  const rahmenEntries = (chapter.rahmen ?? []).map((entry) => {
-    const edited = entry.editServiceId ? chapterServiceById(chapter, entry.editServiceId) : null
-    if (entry.derive === 'buildingScope') {
-      /**
-       * ONE band grammar, two chapter kinds. An Option-wide chapter (KG 400)
-       * states the building scope as a fact; a PER-BUILDING chapter (KG 300)
-       * states which building's rows are live and lets the user switch —
-       * the same cell, so the reader finds the building in the same place
-       * in every chapter.
-       */
-      if (buildingIds.length > 0) {
-        /**
-         * WORK THAT LIVES UNDER ANOTHER BUILDING IS NAMED HERE. The chapter's
-         * completion counts every building while the rows show one, so a
-         * `Weiter` that stays blocked by decisions the reader cannot see
-         * would be a refusal without a route. The buildings still owing a
-         * decision are listed beside the switch, from the same selector the
-         * summary line uses.
-         */
-        const openElsewhere = buildingIds
-          .filter((id) => id !== activeBuilding)
-          .map((id) => ({ id, open: kgChapterOverview(catalogue, decisions, chapterForBuilding(chapter, id)).open }))
-          .filter((entry) => entry.open > 0)
-          .map((entry) => `${buildingNameOf(entry.id)} (${entry.open})`)
-        return {
-          id: entry.id,
-          label: label(entry.labelDe, entry.labelEn),
-          value: buildingNameOf(activeBuilding ?? undefined),
-          meta: buildingIds.length > 1
-            ? [
-              t('vr3.kg.band.perBuilding', { count: buildingIds.length }),
-              ...(openElsewhere.length > 0
-                ? [t('vr3.kg.band.openElsewhere', { names: openElsewhere.join(' · ') })] : []),
-            ].join(' · ')
-            : (s.scopeSaved ? t('vr3.tga.rahmen.baselineConfirmed') : t('vr3.tga.rahmen.baselineOpen')),
-          control: buildingControl,
-        }
-      }
-      return {
-        id: entry.id,
-        label: label(entry.labelDe, entry.labelEn),
-        value: buildings.length === 1
-          ? t('vr3.tga.rahmen.buildingsOne', { name: buildings[0]!.name })
-          : t('vr3.tga.rahmen.buildingsMany', { count: buildings.length }),
-        meta: buildings.length === 1
-          ? (s.scopeSaved ? t('vr3.tga.rahmen.baselineConfirmed') : t('vr3.tga.rahmen.baselineOpen'))
-          : buildings.map((b) => b.name).join(' · '),
-      }
-    }
-    if (entry.derive === 'sourceDocuments') {
-      return {
-        id: entry.id,
-        label: label(entry.labelDe, entry.labelEn),
-        value: t('vr3.tga.rahmen.sourceDocuments', { count: sourceDocumentCount }),
-        meta: t('vr3.tga.rahmen.sourceMeta'),
-      }
-    }
-    if (entry.derive === 'responsibility') {
-      /**
-       * READ-ONLY, FROM THE OWNER. The scope boundary is the one responsibility
-       * fact a technical system depends on, so the band states it — and links
-       * to the step that owns it rather than editing it here (one owner,
-       * `responsibility-matrix-relocation-map.md`).
-       */
-      return {
-        id: entry.id,
-        label: label(entry.labelDe, entry.labelEn),
-        value: responsibility
-          ? label(responsibility.scopeBoundary.handoverDe, responsibility.scopeBoundary.handoverEn)
-          : t('vr3.tga.source.notSpecified'),
-        meta: unresolvedInterfaces > 0
-          ? t(unresolvedInterfaces === 1
-            ? 'vr3.responsibility.state.open' : 'vr3.responsibility.state.openPlural',
-          { count: unresolvedInterfaces })
-          : t('vr3.tga.rahmen.boundaryClient'),
-        action: {
-          label: `${t('vr3.tga.rahmen.boundaryLink')} ↗`,
-          accessibleName: t('vr3.tga.rahmen.boundaryLinkOf'),
-          onToggle: () => s.openConfiguratorStepAt(CONFIGURATOR_STEP.RESPONSIBILITY),
-        },
-      }
-    }
-    const shown = edited ? currentOf(edited, decisionOf(decisions, edited)) : label(entry.valueDe, entry.valueEn)
-    return {
-      id: entry.id,
-      label: label(entry.labelDe, entry.labelEn),
-      value: shown,
-      meta: label(entry.metaDe, entry.metaEn) || undefined,
-      ...(edited?.scopeAxis ? {
-        /**
-         * B2 · requirement 14 — an Option-level AXIS is decided in
-         * Configure · Scope decisions, so the band's action IS the route
-         * there. It used to say `ändern` and open an editor; with the
-         * decision moved, `ändern` would open a read-only row and make the
-         * reader take a second step to find out they cannot change it here.
-         * An affordance that promises editing and delivers a redirect is
-         * worse than a redirect that says so.
-         */
-        action: {
-          label: t('b2.axes.readOnly.route'),
-          expanded: false,
-          onToggle: () => s.openConfiguratorStepAt(CONFIGURATOR_STEP.SCOPE_BOUNDARIES),
-        },
-      } : edited ? {
-        action: {
-          // The visible word IS the accessible name (label-in-name): there is
-          // exactly one editable band entry, so `ändern` is unambiguous, and
-          // the released suites address it by that word.
-          label: rahmenOpen === entry.id ? t('vr3.tga.rahmen.close') : t('vr3.tga.rahmen.edit'),
-          expanded: rahmenOpen === entry.id,
-          onToggle: () => {
-            if (rahmenOpen === entry.id) { s.previewOption(null); setDraft(null); setRahmenOpen(null); return }
-            setRahmenOpen(entry.id)
-            beginEdit(edited)
-          },
-        },
-      } : {}),
-    }
-  })
-
-  /**
-   * A PER-BUILDING chapter without a Rahmen of its own still gets the two
-   * discriminating facts the target's band shows — the building whose rows
-   * are live and the source documents. Both are derived from the Option,
-   * never authored into a catalogue.
-   */
-  const contextEntries = buildingIds.length === 0 ? [] : [
-    {
-      id: 'building',
-      label: t('vr3.kg.band.building'),
-      value: buildingNameOf(activeBuilding ?? undefined),
-      meta: buildingIds.length > 1
-        ? t('vr3.kg.band.perBuilding', { count: buildingIds.length })
-        : (s.scopeSaved ? t('vr3.tga.rahmen.baselineConfirmed') : t('vr3.tga.rahmen.baselineOpen')),
-      control: buildingControl,
-    },
-    {
-      id: 'source',
-      label: t('vr3.kg.band.source'),
-      value: t('vr3.tga.rahmen.sourceDocuments', { count: sourceDocumentCount }),
-      meta: t('vr3.tga.rahmen.sourceMeta'),
-    },
-  ]
-  const bandEntries = chapter.rahmen ? rahmenEntries : contextEntries
-
-  const openRahmen = (chapter.rahmen ?? []).find((e) => e.id === rahmenOpen)
-  const openRahmenService = openRahmen?.editServiceId
-    ? chapterServiceById(chapter, openRahmen.editServiceId) : null
-
-  /* ── one system ─────────────────────────────────────────────────────── */
+/* ── one system ─────────────────────────────────────────────────────── */
 
   const solutionOf = (serviceGroup: KgServiceGroup) => {
     const narrative = systemNarrative(catalogue, decisions, serviceGroup)
@@ -1159,7 +979,7 @@ export function KgSystemChapter({ chapter, group }: {
       return { primary: segments[0] ?? summary, secondary: segments.slice(1).join(' · ') || undefined }
     }
     const leadDecision = decisionOf(decisions, lead)
-    const primary = currentOf(lead, leadDecision)
+    const primary = currentOf(lead)
     // The secondary line states OTHER live facts, never a frozen sentence
     // that could contradict the decision above it (ACCEPT-01's lesson).
     const facts: string[] = []
@@ -1167,10 +987,10 @@ export function KgSystemChapter({ chapter, group }: {
       if (service === lead || facts.length >= 2) continue
       const decision = decisionOf(decisions, service)
       if (service.kind.kind === 'singleChoice' && decision.state === 'selected') {
-        facts.push(currentOf(service, decision))
+        facts.push(currentOf(service))
       } else if (service.kind.kind !== 'singleChoice' && service.requiresDecision
         && decision.state !== 'undecided') {
-        facts.push(`${label(service.labelDe, service.labelEn)} · ${currentOf(service, decision)}`)
+        facts.push(`${label(service.labelDe, service.labelEn)} · ${currentOf(service)}`)
       }
     }
     if (facts.length === 0) {
@@ -1348,27 +1168,6 @@ export function KgSystemChapter({ chapter, group }: {
 
   return (
     <>
-      <RahmenBand entries={bandEntries}>
-        <AnimatePresence initial={false}>
-          {openRahmenService && (
-            <motion.ul
-              key={openRahmenService.id}
-              className="a3-decs a3-rahmen-open"
-              variants={reduced ? undefined : fadeRise}
-              initial={reduced ? false : 'hidden'}
-              animate={reduced ? undefined : 'visible'}
-              exit={reduced ? undefined : 'exit'}
-              transition={transition('reveal')}
-            >
-              {renderDecision(openRahmenService, {
-                basis: label(openRahmen?.basisDe, openRahmen?.basisEn) || undefined,
-                inRahmen: true,
-              })}
-            </motion.ul>
-          )}
-        </AnimatePresence>
-      </RahmenBand>
-
       <SystemOverviewSummary
         facts={facts}
         total={overview.amount === null
@@ -1383,27 +1182,6 @@ export function KgSystemChapter({ chapter, group }: {
         {visible.groups.map(renderSystem)}
       </div>
 
-      {chapter.bemusterung && (
-        <BemusterungBoundary
-          detail={{
-            label: bemOpen ? t('vr3.tga.rahmen.close') : t('vr3.tga.bemusterung.detail'),
-            open: bemOpen,
-            onToggle: () => setBemOpen(!bemOpen),
-          }}
-          title={label(chapter.bemusterung.titleDe, chapter.bemusterung.titleEn)}
-          body={label(chapter.bemusterung.bodyDe, chapter.bemusterung.bodyEn)}
-          decidedHeading={label(
-            chapter.bemusterung.decidedHeadingDe, chapter.bemusterung.decidedHeadingEn,
-          )}
-          deferredHeading={label(
-            chapter.bemusterung.deferredHeadingDe, chapter.bemusterung.deferredHeadingEn,
-          )}
-          rows={chapter.bemusterung.rows.map((row) => ({
-            decided: label(row.decidedDe, row.decidedEn),
-            deferred: label(row.deferredDe, row.deferredEn),
-          }))}
-        />
-      )}
 
       <p className="sr-only" aria-live="polite" id={liveId}>
         {announcement

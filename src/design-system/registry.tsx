@@ -1503,7 +1503,7 @@ export const COMPONENT_REGISTRY: Specimen[] = [
           file="06_A_Grundriss_EG_REV-B.pdf" typeLabel="Grundriss" versionLabel="REV-B"
           associationLabel="Gebäude Kontorhaus" state="READY" stateLabel="Bereit für die Analyse"
           detail={<p className="a3-doc-detail-meta">Beleg · 2026-04-27</p>}
-          detailToggleLabel="Beleg ansehen"
+          detailToggleLabel="Vorschau"
           onToggleDetail={() => {}}
         />
         <DocumentRow
@@ -1512,7 +1512,7 @@ export const COMPONENT_REGISTRY: Specimen[] = [
           associationLabel="Gebäude Kontorhaus" state="WARNING" stateLabel="Hinweis"
           note="Inhaltsgleiches Doppel unter anderem Dateinamen" progress={1}
           detail={<p className="a3-doc-detail-meta">Beleg · 2026-05-02</p>}
-          detailToggleLabel="Beleg ansehen"
+          detailToggleLabel="Vorschau"
           onToggleDetail={() => {}}
           actions={[
             { id: 'retry', label: 'Erneut lesen', onSelect: () => {} },
@@ -2025,17 +2025,16 @@ export const COMPONENT_REGISTRY: Specimen[] = [
     dataStates: ALL_DATA_STATES,
     blockedVariants: [], maturity: 'alpha',
     note: 'A long professional review, kept long: a sticky index with a status per entry, a status per section, and an exact return-to-edit route on every finding.',
-    evidence: 'The index is a nav of in-document links, not a tablist: a tablist would unmount every section but one, and "the reviewer read all twelve" would then be a claim about a document that was never on screen. Section headings are focusable so a jump is announced rather than silently scrolled.',
+    evidence: 'The index is a nav of in-document links, not a tablist: a tablist would unmount every section but one, and "the reviewer read all twelve" would then be a claim about a document that was never on screen. Section headings are focusable so a jump is announced rather than silently scrolled. A summary row that counts a list (`22 gewählt · 2 von 2 entschieden`) KEEPS its sentence and opens it: the sentence itself is the `aria-expanded` toggle, Esc closes the list and returns focus to it, the disclosure state is the component\'s own, and each item\'s `Bearbeiten` is always in the DOM and focusable — revealed on hover, on focus within its row, and unconditionally where the device has no hover — in a column that is reserved whether it shows or not (rule 24).',
     render: () => (
       <ValidationReview
         sectionsLabel="Prüfinhalt"
         index={(
           <ReviewIndex
             label="Prüfabschnitte"
-            progressLabel="9 von 12 geprüft"
             entries={[
               { id: 'baseline', label: 'Projektgrundlage', state: 'REVIEWED', stateLabel: 'geprüft', onSelect: () => {} },
-              { id: 'kg', label: 'KG 200 – 700', state: 'REVIEWED', stateLabel: 'geprüft', count: { reviewed: 6, total: 6 }, onSelect: () => {} },
+              { id: 'kg', label: 'KG 200 – 700', state: 'REVIEWED', stateLabel: 'geprüft', onSelect: () => {} },
               { id: 'schedule', label: 'Terminplan', state: 'ISSUE', stateLabel: 'Befund offen', current: true, onSelect: () => {} },
               { id: 'result', label: 'Kommerzielles Ergebnis', state: 'PENDING', stateLabel: 'noch zu prüfen', onSelect: () => {} },
             ]}
@@ -2049,6 +2048,38 @@ export const COMPONENT_REGISTRY: Specimen[] = [
               rows={[
                 { id: 'project', label: 'Projekt', value: 'Quartier Am Güterbogen · Leipzig' },
                 { id: 'buildings', label: 'Grundlage', value: `3 Gebäude · 19.470${NNBSP}m² BGF R+S` },
+                /* Die Zusammenfassungszeile, die aufklappt: der Satz bleibt,
+                   die Liste der einzelnen Entscheidungen steht darunter, und
+                   jede trägt den Weg zu ihrem eigenen Bedienelement. Die
+                   Schaltfläche ist immer im DOM und immer fokussierbar; sie
+                   wird nur sichtbar — bei Zeiger, bei Fokus und auf einem
+                   Gerät ohne Zeiger immer. */
+                {
+                  id: 'services',
+                  label: 'Leistungen',
+                  value: '3 gewählt · 2 von 2 entschieden',
+                  details: {
+                    expandLabel: 'Leistungen im Einzelnen anzeigen',
+                    collapseLabel: 'Leistungen im Einzelnen ausblenden',
+                    items: [
+                      {
+                        id: 'heat', label: 'Wärmeerzeugung',
+                        value: 'Sole/Wasser-Wärmepumpe',
+                        edit: { label: 'Bearbeiten', onSelect: () => {} },
+                      },
+                      {
+                        id: 'ventilation', label: 'Lüftungskonzept',
+                        value: 'Zentrale Lüftung mit Wärmerückgewinnung',
+                        edit: { label: 'Bearbeiten', onSelect: () => {} },
+                      },
+                      {
+                        id: 'pv', label: 'Photovoltaik',
+                        value: 'Noch nicht entschieden',
+                        edit: { label: 'Bearbeiten', onSelect: () => {} },
+                      },
+                    ],
+                  },
+                },
               ]}
             />
             <ReviewSection

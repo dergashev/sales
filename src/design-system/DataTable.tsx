@@ -55,6 +55,21 @@ export type DataTableRow = Readonly<{
   cells: readonly DataTableCell[]
   /** `group` bolds the row; `indent` marks a second-level child; `sum` rules off. */
   variant?: 'default' | 'group' | 'indent' | 'sum'
+  /**
+   * CONTRACT CHANGE 16.09.2026 — a row may OPEN the rows beneath it.
+   *
+   * Still not a data grid: the table holds no state and decides nothing. The
+   * consumer says whether this row is expanded and supplies only the rows
+   * that are currently visible; all the table does is render the row's name
+   * as a real `<button aria-expanded>` instead of plain text, so the
+   * disclosure is operable by keyboard and announced as what it is. Written
+   * here rather than as a second table because a list that cannot be folded
+   * is not a different table — it is this one with every section open, and
+   * two hundred rows of it is a scroll, not a reading.
+   */
+  disclosure?: Readonly<{ expanded: boolean; onToggle: () => void }>
+  /** Indentation level for a tree, when `variant` is not enough (0 = flush). */
+  depth?: 0 | 1 | 2 | 3
 }>
 
 /**
@@ -108,8 +123,25 @@ export function DataTable({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.key} className={ROW_VARIANT_CLASS[row.variant ?? 'default']}>
-              <th scope="row">{row.header}</th>
+            <tr
+              key={row.key}
+              className={ROW_VARIANT_CLASS[row.variant ?? 'default']}
+              data-depth={row.depth ?? undefined}
+            >
+              <th scope="row">
+                {row.disclosure
+                  ? (
+                    <button
+                      type="button"
+                      className="a3-dt-twist hit-target"
+                      aria-expanded={row.disclosure.expanded}
+                      onClick={row.disclosure.onToggle}
+                    >
+                      {row.header}
+                    </button>
+                  )
+                  : row.header}
+              </th>
               {row.cells.map((cell, index) => (
                 <td
                   // Cells are positional by construction: a cell's identity IS

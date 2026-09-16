@@ -76,15 +76,19 @@ export type ReviewSectionDefinition = Readonly<{
  * implicitly inside KG 400's fingerprint and now has its own owner, its own
  * section and its own route.
  */
+/*
+ * Ten sections since 13.09, not thirteen: the three baseline cost groups
+ * (KG 200/500/600) left the review with the rest of the pipeline. The ids
+ * remain in `ReviewSectionId` on purpose — a stored acknowledgement from an
+ * older Option still names one, and a type that cannot express it would turn
+ * that record into a parse error instead of a harmless leftover.
+ */
 export const REVIEW_SECTIONS: readonly ReviewSectionDefinition[] = [
   { id: 'projectBaseline', groupId: 'projectBaseline', titleKey: 'vr3.review.section.projectBaseline', route: 'project' },
   { id: 'buildings', groupId: 'buildings', titleKey: 'vr3.review.section.buildings', route: 'buildingScope' },
   { id: 'scopeDecisions', groupId: 'scope', titleKey: 'vr3.review.section.scopeDecisions', route: 'scopeBoundaries' },
-  { id: 'kg200', groupId: 'costGroups', titleKey: 'vr3.review.section.kg200', route: 'kg200' },
   { id: 'kg300', groupId: 'costGroups', titleKey: 'vr3.review.section.kg300', route: 'kg300' },
   { id: 'kg400', groupId: 'costGroups', titleKey: 'vr3.review.section.kg400', route: 'kg400' },
-  { id: 'kg500', groupId: 'costGroups', titleKey: 'vr3.review.section.kg500', route: 'kg500' },
-  { id: 'kg600', groupId: 'costGroups', titleKey: 'vr3.review.section.kg600', route: 'kg600' },
   { id: 'kg700', groupId: 'costGroups', titleKey: 'vr3.review.section.kg700', route: 'kg700' },
   // VR3-TGA-UX-00: responsibility truth left the KG 400 section's fingerprint
   // and is represented HERE, exactly once — moving it out of the chapter must
@@ -106,7 +110,11 @@ export const REVIEW_GROUPS: readonly Readonly<{
   { id: 'projectBaseline', titleKey: 'vr3.review.group.projectBaseline', sectionIds: ['projectBaseline'] },
   { id: 'buildings', titleKey: 'vr3.review.group.buildings', sectionIds: ['buildings'] },
   { id: 'scope', titleKey: 'vr3.review.group.scope', sectionIds: ['scopeDecisions'] },
-  { id: 'costGroups', titleKey: 'vr3.review.group.costGroups', sectionIds: ['kg200', 'kg300', 'kg400', 'kg500', 'kg600', 'kg700'] },
+  /* The ASKED cost groups only. KG 200, KG 500 and KG 600 are baseline
+     inclusions since 13.09 — nobody decides or configures them, so there is
+     no decision of the reviewer's to confirm. Their money is still in the
+     commercial result section below, which is where the total is reviewed. */
+  { id: 'costGroups', titleKey: 'vr3.review.group.costGroups', sectionIds: ['kg300', 'kg400', 'kg700'] },
   { id: 'responsibility', titleKey: 'vr3.review.group.responsibility', sectionIds: ['responsibility'] },
   { id: 'schedule', titleKey: 'vr3.review.group.schedule', sectionIds: ['schedule'] },
   { id: 'assumptions', titleKey: 'vr3.review.group.assumptions', sectionIds: ['assumptions'] },
@@ -297,12 +305,21 @@ export function reviewReadyToConfirm(
   available: boolean,
 ): boolean {
   const stage = optionReviewStage(state, inputs, available)
-  if (stage === 'READY') return true
-  // A STALE confirmation is confirmable again once every section it
-  // invalidated has been read again. Otherwise the recovery route is the
-  // sections, not the confirm button.
-  return stage === 'STALE'
-    && reviewProgress(state, inputs).reviewed === REVIEW_SECTION_COUNT
+  /*
+   * GELESEN IST KEINE VORBEDINGUNG MEHR (Owner, 16.09.2026).
+   *
+   * Bis hierher war die Freigabe erst nach dem letzten Abschnittsvermerk
+   * möglich — und ein Sammelknopf daneben hob genau diese Vorbedingung in
+   * einem Klick auf, also war sie ohnehin keine. Jetzt ist sie keine, und
+   * es steht so im Code: wer den Bogen freigibt, gibt ihn frei, und der
+   * Vermerk je Abschnitt bleibt das, was er ist — eine Lesespur.
+   *
+   * `ISSUES` bleibt gesperrt: ein offener Befund ist kein ungelesener
+   * Abschnitt, sondern ein Widerspruch im Angebot, und der Weg dorthin
+   * steht beim Befund. `UNAVAILABLE` bleibt das Tor davor (Terminplan).
+   * `INCOMPLETE`, `READY` und `STALE` sind freigebbar.
+   */
+  return stage === 'READY' || stage === 'INCOMPLETE' || stage === 'STALE'
 }
 
 /** The save gate: a final confirmation that still describes the Option. */

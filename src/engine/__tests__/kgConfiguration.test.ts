@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import Decimal from 'decimal.js'
 import {
+  KG_BASELINE_INCLUDED_GROUPS,
+  KG_DECIDED_SCOPE_GROUPS,
   KG_SCOPE_GROUPS,
   allServices,
+  groupOfService,
+  isAskedScopeGroup,
   dependencyBlocker,
   decidedScopeCount,
   firstOutstandingKgGroup,
@@ -132,31 +136,64 @@ describe('KG configuration catalogue', () => {
   })
 })
 
+/**
+ * Every explicit decision still open when all six groups are included.
+ *
+ * Declared once, here, because the number belongs to the FIXTURE and moves
+ * whenever a chapter gains or loses a question — the assertion below is
+ * about the count being stable, not about the literal.
+ */
+const OPEN_DECISIONS_ALL_INCLUDED = 4
+
 describe('initial state', () => {
+  /**
+   * EVERY GROUP STARTS INCLUDED (owner's decision, 14.09).
+   *
+   * The offer begins as the whole building; excluding is what the seller
+   * does to it. The two facts worth pinning are that the scope gate is
+   * therefore open from the first second — `decidedScopeCount` counts the
+   * three asked groups and all three are answered — and that the SERVICES
+   * of the asked groups are still open, so the configuration as a whole is
+   * not complete. Only the scope question was settled by default; nothing
+   * inside the chapters was.
+   */
   it.each(Object.keys(DECLARED) as Array<keyof typeof DECLARED>)(
-    '%s starts with six undecided scope rows and no contribution',
+    '%s starts with every cost group included',
     (id) => {
       const catalogue = kgCatalogue(id)!
       const decisions = initialDecisions(catalogue)
-      expect(decidedScopeCount(decisions)).toBe(0)
+      expect(decidedScopeCount(decisions)).toBe(KG_DECIDED_SCOPE_GROUPS.length)
       for (const group of KG_SCOPE_GROUPS) {
-        expect(decisions.scope[group]).toBe('undecided')
-        expect(kgChapterProgress(catalogue, decisions, group).state)
-          .toBe('undecidedScope')
+        expect(decisions.scope[group]).toBe('included')
       }
-      // No cost group is included, so nothing is priced — and the total is an
-      // absence, not a zero the rail may print (rule 16).
-      expect(kgContributions(catalogue, decisions)).toEqual([])
-      expect(kgTotal(catalogue, decisions).isZero()).toBe(true)
+      for (const group of KG_BASELINE_INCLUDED_GROUPS) {
+        // A baseline group has no page in the rail, so an open question
+        // inside it would be a question with nowhere to be answered — and
+        // `kgConfigurationComplete` would wait for that answer forever.
+        expect(kgChapterProgress(catalogue, decisions, group).state)
+          .toBe('complete')
+      }
+      // Priced from the start, and a real amount — never a zero standing in
+      // for an absence (rule 16).
+      expect(kgContributions(catalogue, decisions).length).toBeGreaterThan(0)
+      expect(kgTotal(catalogue, decisions).isZero()).toBe(false)
+      // The asked chapters still owe their own decisions.
       expect(kgConfigurationComplete(catalogue, decisions)).toBe(false)
     },
   )
 
-  it('starts every service the domain demands an answer on as undecided', () => {
+  it('starts every asked service the domain demands an answer on as undecided', () => {
     for (const catalogue of kgCatalogues()) {
       const decisions = initialDecisions(catalogue)
       for (const service of allServices(catalogue)) {
         if (!service.requiresDecision) continue
+        const group = groupOfService(catalogue, service.id)
+        if (group && !isAskedScopeGroup(group)) {
+          // Answered from the project standard, with the project standard's
+          // own value — not left open where nobody can reach it.
+          expect(decisions.services[service.id]!.state).not.toBe('undecided')
+          continue
+        }
         expect(decisions.services[service.id]!.state).toBe('undecided')
         // An unanswered decision contributes NOTHING. Unknown is not zero and
         // it is certainly not an amount.
@@ -239,7 +276,9 @@ describe('completion is derived from the domain, not from visiting', () => {
   it('an included chapter with an open required decision is incomplete', () => {
     const catalogue = kgCatalogue('DEMO-HAPPY-01')!
     const decisions = allIncluded('DEMO-HAPPY-01')
-    for (const group of KG_SCOPE_GROUPS) {
+    // The ASKED chapters only: a baseline chapter is settled at creation, so
+    // "included but still open" is no longer a state it can be in.
+    for (const group of KG_DECIDED_SCOPE_GROUPS) {
       const progress = kgChapterProgress(catalogue, decisions, group)
       expect(progress.state).toBe('incomplete')
       expect(progress.requiredDecisions).toBeGreaterThan(0)
@@ -250,8 +289,10 @@ describe('completion is derived from the domain, not from visiting', () => {
     // Lüftungskonzept admits, where the chapter previously asked nothing at
     // all about it. An inapplicable decision is still not counted here — that
     // is asserted directly in `kgTgaDecisions.test.ts`.
-    expect(openKgDecisionCount(catalogue, decisions)).toBe(7)
-    expect(firstOutstandingKgGroup(catalogue, decisions)).toBe('KG_200')
+    expect(openKgDecisionCount(catalogue, decisions)).toBe(OPEN_DECISIONS_ALL_INCLUDED)
+    // The first group a person can still act on — KG 200 has no page to send
+    // them to any more.
+    expect(firstOutstandingKgGroup(catalogue, decisions)).toBe('KG_300')
   })
 
   it('recording every required decision completes the configuration', () => {

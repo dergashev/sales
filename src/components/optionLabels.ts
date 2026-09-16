@@ -41,8 +41,6 @@ const STEP_LABEL_KEY: Readonly<Record<OptionStepId, string | null>> = {
   verantwortung: 'vr3.spine.step.responsibility',
   'alle-kosten': 'vr3.spine.step.costDetails',
   terminplan: 'vr3.spine.step.schedule',
-  'finale-pruefung': 'vr3.spine.step.finalValidation',
-  speichern: 'vr3.journey.step.save',
 }
 
 export function optionStepLabel(t: Translate, step: OptionStepId): string {

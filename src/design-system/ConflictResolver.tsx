@@ -72,12 +72,21 @@ export function ConflictResolver({
   manualEntry?: ReactNode
   confirmAction: ReactNode
   inspectAction?: ReactNode
-  /** The recorded decision, once made. */
+  /**
+   * The recorded decision, once made.
+   *
+   * WITHOUT the rejected values (Owner, 16.09.2026). Sie standen unter
+   * jeder entschiedenen Angabe als «Verworfen: …» — eine Zeile, die dem
+   * Leser nichts sagt, was er entscheiden müsste, und die den geltenden
+   * Wert genau dort mit dem nicht geltenden umstellte. Verworfen bleibt
+   * verworfen: `rejectedCandidateIds` wird weiterhin gespeichert, die
+   * Quellen stehen weiterhin oben in der Karte, und der Verlauf kennt die
+   * Entscheidung samt Herkunft.
+   */
   resolved?: {
     valueLabel: ReactNode
     actor: string
     at: string
-    rejectedLabel: string
   }
   history?: ReactNode
   /** Undo reopens the conflict; readiness re-evaluates immediately. */
@@ -162,7 +171,6 @@ export function ConflictResolver({
           <p className="a3-cfr-record-meta">
             {t('ds.conflict.decidedBy', { actor: resolved.actor, at: resolved.at })}
           </p>
-          <p className="a3-cfr-record-rejected">{resolved.rejectedLabel}</p>
           {history}
           {reopen ? (
             <button

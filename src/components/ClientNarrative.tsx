@@ -519,7 +519,7 @@ export function ChapterProjekt({ proposal, headingRef }: {
           {/*
             Construction reaches the project story as two named client-grade
             lines. A line whose answer differs by building carries its
-            building: stating one façade for a three-building Option is
+            building: stating one facade for a three-building Option is
             false, and this is the only place that rule can be enforced.
           */}
           {proposal.construction.story.length > 0 ? (

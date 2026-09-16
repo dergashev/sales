@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { hasV3Surfaces } from '../lib/variantLock'
 import {
   useCallback, useEffect, useId, useMemo, useRef, useState,
 } from 'react'
@@ -10,9 +11,8 @@ import {
 } from '../state/store'
 import { scopeSelectedIds } from '../state/optionBuildingScope'
 import {
-  optionIsFinished,
+  optionDisplayName,
   orderedOptions,
-  resumeOption,
   type OrderedOption,
 } from '../state/optionLifecycle'
 import {
@@ -22,7 +22,6 @@ import {
   optionsPage,
 } from '../state/projectOptionsView'
 import {
-  optionDestinationLabel,
   optionLifecycleBadge,
   optionOpenActionLabel,
 } from '../components/optionLabels'
@@ -111,7 +110,12 @@ function OptionRow({
   const tx = useTx()
   const { fadeRise, reduced } = useSemanticMotion()
   const [renaming, setRenaming] = useState(false)
-  const [draftName, setDraftName] = useState(row.name)
+  /* The base Option is read under its own label while it still carries the
+     placeholder name, so everything that shows or edits a name shows THAT. */
+  const v3 = hasV3Surfaces(s.navVariant)
+  const deletable = s.optionDeleteBlock(row.id) === null
+  const name = v3 ? optionDisplayName(row, t('vr3.option.baseName')) : row.name
+  const [draftName, setDraftName] = useState(name)
   const [renameError, setRenameError] = useState<string | null>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const nameFieldId = useId()
@@ -128,10 +132,10 @@ function OptionRow({
 
   function commitRename() {
     const next = draftName.trim()
-    if (!next || next === row.name) {
+    if (!next || next === name) {
       setRenaming(false)
       setRenameError(null)
-      setDraftName(row.name)
+      setDraftName(name)
       return
     }
     if (s.options.some((o) => o.id !== row.id && o.name === next)) {
@@ -204,7 +208,8 @@ function OptionRow({
       animate="visible"
       aria-current={active ? 'page' : undefined}
       aria-labelledby={nameId}
-      className={`a3-optrow${active ? ' a3-optrow-active' : ''}${justCreated ? ' a3-flash' : ''}`}
+      className={`a3-optrow${v3 && row.isBase ? ' a3-optrow-base' : ''}${
+        active ? ' a3-optrow-active' : ''}${justCreated ? ' a3-flash' : ''}`}
     >
       <div className="a3-optrow-head">
         <div className="a3-optrow-identity">
@@ -226,7 +231,7 @@ function OptionRow({
                   if (event.key === 'Enter') { event.preventDefault(); commitRename() }
                   if (event.key === 'Escape') {
                     event.preventDefault()
-                    setDraftName(row.name)
+                    setDraftName(name)
                     setRenameError(null)
                     setRenaming(false)
                   }
@@ -235,7 +240,7 @@ function OptionRow({
               />
             </FormField>
           ) : (
-            <h2 id={nameId} className="a3-optrow-name">{row.name}</h2>
+            <h2 id={nameId} className="a3-optrow-name">{name}</h2>
           )}
           <span className="a3-optrow-badges">
             {active && (
@@ -282,18 +287,34 @@ function OptionRow({
            holds instead of letting the reader assume the opposite. */
         <p className="a3-optrow-note">{t('vr3.option.baselineMoved')}</p>
       )}
+      {/* THE ACT FIRST, IN THE DOM AND ON THE SCREEN.
+          `Rename` used to come first in source order and therefore first in
+          the tab order, so the keyboard reached the housekeeping control
+          before the one action the row exists for. Reversing them here —
+          rather than with `row-reverse` in CSS — keeps reading order,
+          focus order and visual order the same thing. */}
       <div className="a3-optrow-actions">
+        <Button variant={active ? 'primary' : 'secondary'} onClick={open}>
+          {optionOpenActionLabel(t, row.state, row.destination)}
+        </Button>
         {!sent && !renaming && (
           <Button
             variant="ghost"
-            onClick={() => { setDraftName(row.name); setRenaming(true) }}
+            onClick={() => { setDraftName(name); setRenaming(true) }}
           >
             {t('vr3.option.rename')}
           </Button>
         )}
-        <Button variant={active ? 'primary' : 'secondary'} onClick={open}>
-          {optionOpenActionLabel(t, row.state, row.destination)}
-        </Button>
+        {/* Deleting is offered only where it is ALLOWED: never on the base
+            Option the others depart from, never on one that was already
+            sent (its snapshot is immutable, M-3). A control that is drawn
+            and then refuses would have to explain itself on every row it
+            can never act on. Undo is the journal's (DC-29). */}
+        {v3 && !renaming && deletable && (
+          <Button variant="ghost" onClick={() => s.deleteOption(row.id)}>
+            {t('vr3.option.delete')}
+          </Button>
+        )}
       </div>
     </motion.li>
   )
@@ -332,18 +353,26 @@ export function OptionsWorkspace({
   }, [])
 
   const rows = useMemo(() => orderedOptions(s), [s])
-  const resume = useMemo(() => resumeOption(s), [s])
   const view = optionsPage(rows, page, OPTIONS_PAGE_SIZE)
+  const v3 = hasV3Surfaces(s.navVariant)
 
   /**
    * A newly created Option takes focus, on its own row.
    *
-   * The list is ordered incomplete-first, so a new Option is always on page
-   * one and always visible without scrolling — the audit's requirement,
-   * satisfied by the ordering rather than by a scroll.
+   * The list is ordered base-first and then by creation, so a new Option is
+   * the LAST row — which is a page of its own once the collection is longer
+   * than one page. The page follows the new row before focus looks for it;
+   * without that, focus would search a page the row is not on.
    */
   useEffect(() => {
     if (!justCreatedOptionId) return
+    const at = hasV3Surfaces(s.navVariant)
+      ? rows.findIndex((row) => row.id === justCreatedOptionId)
+      : -1
+    if (at >= 0) {
+      const target = Math.floor(at / OPTIONS_PAGE_SIZE) + 1
+      if (target !== page) { goToPage(target); return }
+    }
     // The row is addressed by its OPTION, not by a forwarded ref: the row is
     // a `motion.li`, and framer-motion attaches an external ref through its
     // own effect, so a parent effect can observe it still `null` on the very
@@ -354,33 +383,9 @@ export function OptionsWorkspace({
     )
     row?.scrollIntoView?.({ block: 'nearest' })
     row?.focus()
-  }, [justCreatedOptionId])
+  }, [justCreatedOptionId, rows, page, goToPage, s.navVariant])
 
   const empty = rows.length === 0
-  const allFinished = !empty && rows.every((row) => optionIsFinished(row.state))
-  const created = justCreatedOptionId
-    ? rows.find((row) => row.id === justCreatedOptionId) ?? null
-    : null
-  const resumeLine = created
-    ? t('vr3.options.resume.created', { option: created.name })
-    : resume
-      ? t(
-        resume.lastChangedAt
-          ? 'vr3.options.resume.continue'
-          : 'vr3.options.resume.continueNew',
-        {
-          option: resume.name,
-          when: resume.lastChangedAt
-            ? timeStamp(resume.lastChangedAt, s.uiLanguage)
-            : '',
-          where: resume.destination
-            ? optionDestinationLabel(t, resume.destination)
-            : '',
-        },
-      )
-      : allFinished && rows[0]
-        ? t('vr3.options.resume.allReady', { option: rows[0].name })
-        : ''
 
   return (
     <div className="a3-options">
@@ -398,12 +403,23 @@ export function OptionsWorkspace({
               <span className="numeric">{rows.length}</span>
             </span>
           </h1>
-          <CreateOptionButton
-            project={project}
-            analysis={analysis}
-            variant="secondary"
-            label={t('vr3.options.createFurther')}
-          />
+          <div className="a3-options-head-actions">
+            {/* A cross-Option destination of the PROJECT, beside the action
+                that makes the Options it compares — the two answers to
+                "what now" stand together instead of one of them living as
+                a link under the fold. */}
+            {v3 && rows.length > 1 && (
+              <Button variant="secondary" onClick={() => s.openComparison()}>
+                {t('nav.vergleich')}
+              </Button>
+            )}
+            <CreateOptionButton
+              project={project}
+              analysis={analysis}
+              variant="secondary"
+              label={t('vr3.options.createFurther')}
+            />
+          </div>
         </div>
       )}
 
@@ -430,11 +446,6 @@ export function OptionsWorkspace({
         />
       ) : (
         <>
-          {/* One sentence that names the Option to continue and WHY — the
-              collection's answer to "where was I", stated before the list so
-              a returning user never has to reconstruct it from eleven rows. */}
-          <p className="a3-options-resume">{resumeLine}</p>
-
           <ul ref={listRef} className="a3-options-list">
             <AnimatePresence initial={false}>
               {view.rows.map((row) => (
@@ -464,8 +475,10 @@ export function OptionsWorkspace({
           )}
 
           {/* A cross-Option destination of the PROJECT, offered where the
-              collection is — never a numbered step beneath a rail. */}
-          {rows.length > 1 && (
+              collection is — never a numbered step beneath a rail. In `v3`
+              it stands in the head beside «create», so it is not repeated
+              here. */}
+          {!v3 && rows.length > 1 && (
             <p className="a3-options-links">
               <button
                 type="button"

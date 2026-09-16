@@ -187,12 +187,31 @@ const PROGRESSION_GLYPH: Record<WorkflowState, string> = {
   outOfScope: '—',
 }
 
+/**
+ * ORIENTATION IS A VARIANT OF THIS NAVIGATOR, NOT A SECOND NAVIGATOR.
+ *
+ * `horizontal` (default) is the released rail, unchanged in every respect —
+ * the band of members still spans the whole rail beneath it, because inside
+ * their stage's own column they sized it (see the note at that band).
+ *
+ * `vertical` draws the same stages, the same states, the same vocabulary and
+ * the same keyboard model as one column, and puts the current stage's
+ * members directly UNDER that stage, inside its own `<li>` — in a column
+ * there is no width to compete for, so the reason the band was lifted out
+ * does not apply, and nesting restores the association the horizontal band
+ * has to recover through an accessible name. A `progression` presentation
+ * is ignored here and the list is drawn instead: the progression is a
+ * contiguous row of eight equal segments, which a rail column cannot hold.
+ */
+export type WorkflowOrientation = 'horizontal' | 'vertical'
+
 export function WorkflowNavigator({
-  stages, ariaLabel,
+  stages, ariaLabel, orientation = 'horizontal',
 }: {
   stages: ReadonlyArray<WorkflowStage>
   /** Required accessible name for the `<nav>` landmark. */
   ariaLabel: string
+  orientation?: WorkflowOrientation
 }) {
   const t = useT()
   const buttonRefs = useRef<Array<HTMLButtonElement | null>>([])
@@ -230,8 +249,49 @@ export function WorkflowNavigator({
     }
   }
 
+  const vertical = orientation === 'vertical'
+
+  /** The current stage's members as a list — the only shape a column holds. */
+  const membersList = (stage: WorkflowStage) => (
+    <ol
+      className="a3-wfn-sub"
+      aria-label={t('ds.workflowNavigator.stepsOf', { stage: stage.label })}
+    >
+      {stage.steps!.map((step) => (
+        <li
+          key={step.id}
+          className={`a3-wfn-substep ${STATE_CLASS[step.state]}`}
+          data-state={step.state}
+        >
+          {step.onSelect ? (
+            <button
+              type="button"
+              className="a3-wfn-subbutton hit-target"
+              aria-current={step.state === 'current' ? 'step' : undefined}
+              onClick={step.onSelect}
+            >
+              <span className="a3-wfn-sublabel">{step.label}</span>
+              <span className="a3-wfn-substate">{stateText(t, step)}</span>
+            </button>
+          ) : (
+            <span className="a3-wfn-substatic">
+              <span className="a3-wfn-sublabel">{step.label}</span>
+              <span className="a3-wfn-substate">{stateText(t, step)}</span>
+            </span>
+          )}
+        </li>
+      ))}
+    </ol>
+  )
+
+  const hasMembers = (stage: WorkflowStage | undefined): stage is WorkflowStage =>
+    !!stage && !!stage.steps && stage.steps.length > 0
+
   return (
-    <nav className="a3-wfn" aria-label={ariaLabel}>
+    <nav
+      className={`a3-wfn${vertical ? ' a3-wfn-vertical' : ''}`}
+      aria-label={ariaLabel}
+    >
       <ol className="a3-wfn-list">
         {stages.map((stage, index) => {
           const stageStateText = stateText(t, stage)
@@ -270,6 +330,11 @@ export function WorkflowNavigator({
                   {body}
                 </div>
               )}
+              {/* In a column the members belong to the stage they describe,
+                  so they are drawn inside it — see the orientation note. */}
+              {vertical && stage.state === 'current' && hasMembers(stage)
+                ? membersList(stage)
+                : null}
             </li>
           )
         })}
@@ -292,7 +357,7 @@ export function WorkflowNavigator({
         the `<li>` it regains as an accessible name that states which stage
         these members belong to.
       */}
-      {current && current.steps && current.steps.length > 0
+      {!vertical && current && current.steps && current.steps.length > 0
         && current.stepsPresentation === 'progression' ? (
         /*
           THE COMPACT CHAPTER PROGRESSION (VR3-KG-UNIFY-00, navigation
@@ -356,7 +421,7 @@ export function WorkflowNavigator({
               )
             })}
           </ol>
-        ) : current && current.steps && current.steps.length > 0 ? (
+        ) : !vertical && current && current.steps && current.steps.length > 0 ? (
         <ol
           className="a3-wfn-sub"
           aria-label={t('ds.workflowNavigator.stepsOf', { stage: current.label })}

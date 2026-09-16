@@ -283,7 +283,8 @@ export type DocumentRowAction = {
 export function DocumentRow({
   file, typeLabel, versionLabel, associationLabel, note, state, stateLabel,
   stateReason, progress = 0, active, stale, lineage, actions, detail,
-  detailOpen, onToggleDetail, detailToggleLabel, rowMotion, density = 'default',
+  detailOpen, onToggleDetail, detailToggleLabel, detailControlsId,
+  rowMotion, density = 'default',
 }: {
   file: string
   typeLabel: string
@@ -308,6 +309,18 @@ export function DocumentRow({
   detailOpen?: boolean
   onToggleDetail?: () => void
   detailToggleLabel?: string
+  /**
+   * The id of the region the toggle controls when the detail is NOT inline.
+   *
+   * A row may show its document in a surface of its own — a panel beside the
+   * register rather than a strip under the row — and then the row has no
+   * `detail` to render but still owns the control that opens it. Passing the
+   * external region's id keeps `aria-expanded`/`aria-controls` pointing at
+   * the thing that actually appears, which is the whole contract of a
+   * disclosure; without it the button would claim to control an element that
+   * does not exist.
+   */
+  detailControlsId?: string
   rowMotion?: DocumentRowMotion
   /** `compact` is the operational register density (64–72px collapsed). */
   density?: 'default' | 'compact'
@@ -323,28 +336,33 @@ export function DocumentRow({
     active ? 'a3-drow-current' : '',
   ].filter(Boolean).join(' ')
   // Inspection is INDEPENDENT of recovery (audit finding 3): a row that has
-  // nothing to retry still has evidence to look at.
-  const inspect = detail && onToggleDetail ? (
-    <button
-      type="button"
-      className="a3-drow-action a3-drow-action-inspect hit-target"
-      aria-expanded={Boolean(detailOpen)}
-      aria-controls={detailId}
-      aria-label={t('ds.documentRow.actionOn', {
-        action: detailToggleLabel ?? t('ds.documentRow.inspect'), file,
-      })}
-      onClick={onToggleDetail}
-    >
-      {detailToggleLabel ?? t('ds.documentRow.inspect')}
-    </button>
-  ) : null
+  // nothing to retry still has evidence to look at. The document itself is
+  // the control: the file name carries the disclosure, so the register shows
+  // no second button saying what the name already is.
+  const openable = Boolean((detail || detailControlsId) && onToggleDetail)
   const Row = rowMotion ? motion.li : 'li'
   return (
     <Row className={className} {...(rowMotion ?? {})}>
       <div className="a3-drow-main">
         <span className="a3-drow-kind" aria-hidden="true">PDF</span>
         <div className="a3-drow-identity">
-          <b className="a3-drow-file" title={file}>{file}</b>
+          {openable ? (
+            <button
+              type="button"
+              className="a3-drow-file a3-drow-file-link hit-target"
+              title={file}
+              aria-expanded={Boolean(detailOpen)}
+              aria-controls={detailControlsId ?? detailId}
+              aria-label={t('ds.documentRow.actionOn', {
+                action: detailToggleLabel ?? t('ds.documentRow.inspect'), file,
+              })}
+              onClick={onToggleDetail}
+            >
+              {file}
+            </button>
+          ) : (
+            <b className="a3-drow-file" title={file}>{file}</b>
+          )}
           {meta ? <span className="a3-drow-meta">{meta}</span> : null}
           {note ? <span className="a3-drow-note">{note}</span> : null}
           {lineage ? <span className="a3-drow-lineage">{lineage}</span> : null}
@@ -390,7 +408,6 @@ export function DocumentRow({
           )}
           <span className="sr-only">{t('ds.documentRow.stateOf', { file })}</span>
         </div>
-        {inspect ? <div className="a3-drow-inspect">{inspect}</div> : null}
       </div>
       {actions && actions.length > 0 ? (
         <div className="a3-drow-actions">

@@ -228,6 +228,84 @@ export function clearLastProjectId(storage: StorageLike): boolean {
   }
 }
 
+/* ── which navigation variant the reader chose ─────────────────────────── */
+
+/**
+ * A READING PREFERENCE, stored next to `lastProject` and deliberately NOT
+ * inside a proposal payload.
+ *
+ * It belongs to the person, not to a project: filing it with the proposal
+ * would make the rail flip back on every project switch, and the payload's
+ * version guard would throw the choice away on the next shape change. Same
+ * namespace rule as `lastProject` — a pointer about the session, outside
+ * `PROPOSAL_STORAGE_PREFIX`, so pruning proposals cannot eat it.
+ */
+export const NAV_VARIANT_KEY = 'all3.session.v1.navVariant'
+
+export function readNavVariant(storage: StorageLike): 'v1' | 'v2' | 'v3' | 'v4' | null {
+  try {
+    const raw = storage.getItem(NAV_VARIANT_KEY)
+    return raw === 'v1' || raw === 'v2' || raw === 'v3' || raw === 'v4' ? raw : null
+  } catch {
+    return null
+  }
+}
+
+export function writeNavVariant(
+  storage: StorageLike, variant: 'v1' | 'v2' | 'v3' | 'v4',
+): boolean {
+  try {
+    storage.setItem(NAV_VARIANT_KEY, variant)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/* ── the project register's own analyses ───────────────────────────────── */
+
+/**
+ * WHAT EACH PROJECT'S DOCUMENT ANALYSIS FOUND, kept across reloads.
+ *
+ * It is not proposal data — it belongs to the project REGISTER, is keyed by
+ * project id, and one project's Option workspace must not carry another
+ * project's analysis — so it lives beside `lastProject` rather than inside a
+ * proposal payload, for the same reason the store keeps it out of the
+ * project-scoped swap.
+ *
+ * Without this the register forgot every completed analysis on reload: the
+ * evidence rows still rendered from the fixture while the workflow rail
+ * reported `Dokumentanalyse fehlt`, so a project a person had finished
+ * reading came back looking untouched.
+ */
+export const ANALYSES_KEY = 'all3.session.v1.analyses'
+
+export function readProjectAnalyses(storage: StorageLike): unknown {
+  try {
+    const raw = storage.getItem(ANALYSES_KEY)
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    // An object of objects or nothing: a malformed payload is DISCARDED, not
+    // guessed at, exactly as the proposal envelope is.
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed
+      : null
+  } catch {
+    return null
+  }
+}
+
+export function writeProjectAnalyses(
+  storage: StorageLike, analyses: unknown,
+): boolean {
+  try {
+    storage.setItem(ANALYSES_KEY, JSON.stringify(analyses))
+    return true
+  } catch {
+    return false
+  }
+}
+
 /* ── the proposal namespace ────────────────────────────────────────────── */
 
 function isEnumerable(storage: StorageLike): storage is EnumerableStorageLike {

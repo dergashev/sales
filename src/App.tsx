@@ -1,5 +1,10 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { canBeginConfiguration, pipelineViewForBuildingGate, useStore } from './state/store'
+import {
+  canBeginConfiguration,
+  pipelineViewForBuildingGate,
+  resetDemonstration,
+  useStore,
+} from './state/store'
 import { useT } from './i18n'
 import all3Logo from '../design-system/All3Logo.png'
 import { SegmentedControl } from './components/controls'
@@ -10,12 +15,15 @@ import { OfferPanel } from './components/OfferPanel'
 import { CostDetails } from './screens/CostDetails'
 import { PresentationShell } from './components/PresentationShell'
 import { UndoToast } from './components/UndoToast'
+import { JourneyRail } from './components/JourneyRail'
 import { ConfigurationModeReadiness, ModeChangeNotice, S3Konfigurator } from './screens/S3Konfigurator'
 import { S5Export } from './screens/S5Export'
 import { S6Einstellungen } from './screens/S6Einstellungen'
 import { OpportunityList } from './screens/OpportunityList'
 import { ProjectHome } from './screens/ProjectHome'
 import { PraesentierenStage } from './screens/PraesentierenStage'
+import { LOCKED_NAV_VARIANT, hasV3Surfaces } from './lib/variantLock'
+import { BASE_OPTION_AUTO_NAME } from './state/optionLifecycle'
 import { OptionContextHeader, OPTION_HEADING_ATTR } from './components/OptionContextHeader'
 import { OptionWorkflowNavigator } from './components/WorkflowSpine'
 import { useAppRouting } from './state/useAppRouting'
@@ -61,6 +69,12 @@ export function App() {
   // локального состояния App они бы этого не могли (DC-27, ревью № 13).
   const view = s.pipelineView
   const praesentation = isClientProjection(s.mode)
+  /**
+   * `v2` und `v3` — ONE vertical rail for the whole journey, never in the
+   * client projection: that shell owns its own top bar and shows no
+   * workflow. `v3` unterscheidet sich von `v2` nur in der Terminstufe.
+   */
+  const verticalRail = s.navVariant !== 'v1' && !praesentation
   const outputProfileView = pipelineViewForOutputProfile(s.mode, view)
   const renderedView = pipelineViewForBuildingGate(s, outputProfileView)
   /**
@@ -225,9 +239,16 @@ export function App() {
         <AppHeader />
         {!praesentation && <ClientOutputGateDialog returnFocusTo={modeRef} />}
         <RouteNotice notice={routeNotice} />
-        <main ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto bg-surface-default outline-none">
-          {s.level === 'liste' ? <OpportunityList /> : <ProjectHome />}
-        </main>
+        {/* `v2` puts ONE rail in the left column for the whole journey; the
+            portfolio root has no journey to show and keeps the full width.
+            In `v1` this wrapper is a plain single-child row and the released
+            layout is byte-for-byte what it was. */}
+        <div className="flex min-h-0 flex-1">
+          {verticalRail && s.level !== 'liste' && <JourneyRail />}
+          <main ref={mainRef} tabIndex={-1} className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-surface-default outline-none">
+            {s.level === 'liste' ? <OpportunityList /> : <ProjectHome />}
+          </main>
+        </div>
         <UndoToast />
       </div>
     )
@@ -286,6 +307,10 @@ export function App() {
         <PresentationShell mainRef={mainRef} modeRef={modeRef} />
       ) : (
         <div className={`flex min-h-0 flex-1${renderedView === 'konfigurator' ? ' a3-config-work-shell' : ''}`}>
+          {/* The same rail, carried across the seam — this is the whole
+              point of `v2`: the map does not change grammar at the exact
+              boundary where the reader most needs it. */}
+          {verticalRail && <JourneyRail />}
           {/* THE SEAM, from the inside (accepted 2026-09-06 IA audit).
               The left rail is gone. It carried a 13-step vertical spine that
               was 2.21 viewports tall at 1440 and 2.63 at 1280, replaced the
@@ -356,6 +381,46 @@ export function App() {
  * обратно. Дублировать шапку было бы вторым источником правды о том, как
  * выглядит верх продукта.
  */
+/**
+ * The reset — one click, no question asked.
+ *
+ * Deliberately unconfirmed, by the prototype owner's decision: this is a
+ * demonstration tool whose content is fixtures, and a confirmation step in
+ * front of "start over" costs more in a live demo than the discarded work
+ * is worth. What it discards is still real (every Option built in this
+ * browser) and the journal cannot bring it back, which is why the control
+ * is a small, quiet glyph rather than a labelled button next to the work.
+ */
+function ResetControl() {
+  const t = useT()
+  return (
+    <button
+      type="button"
+      className="a3-reset hit-target"
+      aria-label={t('shell.reset')}
+      title={t('shell.reset')}
+      onClick={() => resetDemonstration()}
+    >
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none">
+        {/* A circular arrow: an open ring plus the head that says which way
+            it turns. Perfect circles are the one curve rule 4 keeps. */}
+        <path
+          d="M20 12a8 8 0 1 1-2.34-5.66"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="square"
+        />
+        <path
+          d="M20 4v4.5h-4.5"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="square"
+        />
+      </svg>
+    </button>
+  )
+}
+
 function AppHeader() {
   const s = useStore()
   const t = useT()
@@ -372,7 +437,16 @@ function AppHeader() {
   // NORMAL path and printed `DEMO-HAPPY-01` in the breadcrumb of every
   // pipeline screen, which is exactly the defect F05 removed.
   const currentOpportunity = demoProject(s.opportunityId)
-  const currentOption = s.options.find((o) => o.id === s.activeOptionId)
+  const currentOptionIndex = s.options.findIndex((o) => o.id === s.activeOptionId)
+  const currentOption = currentOptionIndex >= 0 ? s.options[currentOptionIndex] : undefined
+  /* One Option, one name — the breadcrumb reads what the collection, the
+     rail, the header and the switcher read. */
+  const currentOptionName = currentOption
+    ? (hasV3Surfaces(s.navVariant) && currentOptionIndex === 0
+      && currentOption.name === BASE_OPTION_AUTO_NAME
+      ? t('vr3.option.baseName')
+      : currentOption.name)
+    : undefined
   // VR2-09 cross-route continuity: the breadcrumb's upward steps (Option →
   // Project, Project → portfolio) are the reverse of the CONTINUITY edges
   // the forward journey already animates (`OpportunityList`,
@@ -425,7 +499,7 @@ function AppHeader() {
             {s.level === 'option' && s.activeOptionId && (
               <>
                 <span aria-hidden="true" className="text-text-muted">/</span>
-                <span className="a3-cap">{currentOption?.name ?? s.activeOptionId}</span>
+                <span className="a3-cap">{currentOptionName ?? s.activeOptionId}</span>
               </>
             )}
           </nav>
@@ -453,6 +527,16 @@ function AppHeader() {
             than taller. The accessible name stays `Sprache` / `Language` —
             through the dictionary, because a hard-coded legend renders one
             language on both locales. */}
+        {/* RESTART THE DEMONSTRATION.
+            It exists because the prototype now REMEMBERS: analyses, Options
+            and configurations survive a reload, so there has to be a way
+            back to the first screen that is not "clear the browser's site
+            data". A glyph rather than a word — it sits beside two other
+            chrome controls and a labelled button would out-shout both —
+            with the sentence as its accessible name. */}
+        {!praesentation && (
+          <ResetControl />
+        )}
         <div className="a3-language-control">
           <SegmentedControl
             layout="inline"
@@ -466,6 +550,44 @@ function AppHeader() {
             ]}
           />
         </div>
+        {/* THE NAVIGATION VARIANT — a reading preference of the person, not
+            a state of the project, so it sits beside the language control,
+            in the same canonical control at the same compact size.
+            Deliberately NOT offered in the client projection — `praesentation` renders its own top bar
+            and a client has no reason to restructure the seller's
+            navigation. */}
+        {!praesentation && !LOCKED_NAV_VARIANT && (
+          <div className="a3-navvariant-control">
+            <SegmentedControl
+              layout="inline"
+              size="compact"
+              legend={t('shell.navVariant')}
+              /* The visible word is gone the same way the language
+                 control's is — the segments read `v1`…`v4` and the legend
+                 stays the accessible name of the fieldset. */
+              legendHidden
+              /* Four segments are allowed here for one reason, and the
+                 control checks it: these labels are tokens, not translated
+                 words, so the width risk LOCALE-004 guards against does
+                 not exist. */
+              tokenLabels
+              value={s.navVariant}
+              onChange={(v) => s.setNavVariant(v)}
+              options={[
+                { value: 'v1', label: 'v1' },
+                { value: 'v2', label: 'v2' },
+                /* `v3` navigiert wie `v2`; die Stufe „Terminplan“ zeigt dort
+                   das gerechnete Bauzeit-Modell statt des geerbten
+                   Phasenplans. */
+                { value: 'v3', label: 'v3' },
+                /* `v4` ist `v3` mit der Reise als ZWEI Ebenen: das Projekt,
+                   und darunter die Option, der die späteren Stufen
+                   gehören. */
+                { value: 'v4', label: 'v4' },
+              ]}
+            />
+          </div>
+        )}
         {!praesentation && (
           <AccountMenu />
         )}

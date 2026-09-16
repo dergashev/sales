@@ -144,12 +144,12 @@ describe('optionLifecycleState · every state is reachable by driving the store'
     ['BOUNDARIES_OPEN', { stage: 'konfigurieren', step: 'leistungsabgrenzung' }],
     ['CALCULATING', { stage: 'kalkulieren', step: 'kg200' }],
     ['SCHEDULE_OPEN', { stage: 'kalkulieren', step: 'terminplan' }],
-    ['REVIEW_OPEN', { stage: 'pruefen', step: 'finale-pruefung' }],
+    ['REVIEW_OPEN', { stage: 'pruefen', step: null }],
     // The failure's own trigger reopened a scope decision, so the total
     // destination function points at the thing that is actually incomplete
     // — which is the property that makes it total rather than a lookup.
     ['SAVE_FAILED', { stage: 'konfigurieren', step: 'leistungsabgrenzung' }],
-    ['SAVE_AVAILABLE', { stage: 'pruefen', step: 'speichern' }],
+    ['SAVE_AVAILABLE', { stage: 'pruefen', step: null }],
     ['CLIENT_READY', { stage: 'praesentieren', step: null }],
     ['SENT', { stage: 'praesentieren', step: null }],
   ]
@@ -234,7 +234,7 @@ describe('optionLifecycleState · it decides nothing', () => {
     expect(clientModeLockReason(aged, id)).toBe('projectionOutdated')
     expect(optionLifecycleState(aged, id)).toBe('CLIENT_LOCKED')
     expect(optionOpenDestination(aged, id))
-      .toEqual({ stage: 'pruefen', step: 'finale-pruefung' })
+      .toEqual({ stage: 'pruefen', step: null })
     // The saved receipt itself is intact: only the CLIENT's right to see it
     // is revoked, which is what a contract bump means.
     expect(aged.savedOptionVersions[id]).toHaveLength(1)

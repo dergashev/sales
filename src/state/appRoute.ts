@@ -138,6 +138,16 @@ export function decodeRoutePath(pathname: string): AppRoute | null {
   }
   if (parts.length !== 6) return null
   const step = parts[5]!
+  /**
+   * DECODING ONLY, like `kostendetails` above: the two members Prüfen used
+   * to declare (`finale-pruefung`, `speichern`) were retired on 2026-09-16
+   * because both resolved to the same surface. A URL saved before that day
+   * still names a real place — the Prüfen stage — and resolving it there is
+   * what keeps it from 404-ing. `routePath` never writes these again.
+   */
+  if (view === 'pruefen' && (step === 'finale-pruefung' || step === 'speichern')) {
+    return { kind: 'option', projectId, optionId, view, step: null }
+  }
   return (OPTION_STAGE_STEPS[view] as readonly string[]).includes(step)
     ? { kind: 'option', projectId, optionId, view, step: step as OptionStepId }
     : null
@@ -158,7 +168,39 @@ export function sameRoute(a: AppRoute | null, b: AppRoute | null): boolean {
  * parameters when they are at their default. Stripping a foreign parameter
  * here would silently drop the filter a reader is one Back press away from.
  */
+/**
+ * THE DEPLOY BASE, and why the route model has to know about it.
+ *
+ * The eleven paths are absolute (`/projekt/…`) because the app has always
+ * been served from the root of its host. A GitHub-Pages project site is not
+ * at a root — it is at `/<repo>/` — and an absolute path written there walks
+ * out of the deployment: the address bar says `/projekt/DEMO-HAPPY-01`, and
+ * reloading that address is a 404 from a server that has never heard of it.
+ *
+ * So the base is stripped on the way in and re-attached on the way out, in
+ * these three functions and nowhere else. `BASE_URL` is `/` in development
+ * and under the test runner, where every one of them is the identity.
+ */
+export function routeBase(): string {
+  const base = (import.meta.env?.BASE_URL ?? '/') as string
+  return base === '/' ? '' : base.replace(/\/$/, '')
+}
+
+/** The address bar's path, as this module's model sees it. */
+export function locationRoutePath(pathname: string): string {
+  const base = routeBase()
+  if (!base) return pathname
+  if (pathname === base) return '/'
+  return pathname.startsWith(`${base}/`) ? pathname.slice(base.length) : pathname
+}
+
+/** One of this module's paths, as the address bar must spell it. */
+export function routeUrl(path: string): string {
+  return `${routeBase()}${path}`
+}
+
 export function routeHref(route: AppRoute, search: string): string {
   const query = search.startsWith('?') ? search.slice(1) : search
-  return query ? `${routePath(route)}?${query}` : routePath(route)
+  const path = routeUrl(routePath(route))
+  return query ? `${path}?${query}` : path
 }

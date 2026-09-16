@@ -149,9 +149,9 @@ describe('the journeys', () => {
     act(() => { st().backToList() })
     act(() => { st().openOpportunity('DEMO-HAPPY-01') })
     expect(st().projectStage).toBe('options')
-    // The collection's one sentence names the Option to continue.
-    expect(optionsSurface().querySelector('.a3-options-resume')!.textContent)
-      .toMatch(/Weiter bei/)
+    // The collection itself is the answer: the Option is listed, with its
+    // own row naming where it stands.
+    expect(optionsSurface().querySelector('[data-option-id]')).not.toBeNull()
   })
 
   it('AC-19: Alle Optionen returns to the collection from inside the Option', async () => {
@@ -206,7 +206,7 @@ describe('the rails', () => {
     expect(within(rail()).queryByText('Option anlegen')).toBeNull()
     // AC-5: no project-scoped stage appears here.
     expect(within(rail()).queryByText('Dokumente')).toBeNull()
-    expect(within(rail()).queryByText('Projektverständnis')).toBeNull()
+    expect(within(rail()).queryByText('Projekt-Checkliste')).toBeNull()
     // AC-8: exactly one current stage, and at most one current nested step.
     expect(rail().querySelectorAll('.a3-wfn-stage > [aria-current="step"]'))
       .toHaveLength(1)
