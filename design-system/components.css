@@ -2915,10 +2915,19 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    Anforderungssatz («Ein Mindestanteil barrierefreier Wohnungen …») ist
    ebenfalls ein Wert, aber als Absatz, und 24 px daraus wären eine Wand.
    Die Einheit bleibt kleiner auf derselben Grundlinie (Regel 31). */
+/* 18 px WÄRE die gewünschte Stufe, die Skala hat sie aber nicht: R-24
+   lässt [12, 14, 16, 24, 32, 36, 48, 64] zu, und `tools/verify.py` weist
+   jeden Wert dazwischen ab — auch als provisorisches Token. Also `body`
+   (16 px) in Bold: gegen die 14-px-Prosa ringsum ist das eine echte Stufe,
+   ohne dass eine Zahl wieder als Aushang über der Zeile steht. */
 .a3-evitem .a3-aut-value>.numeric,
-.a3-decrow-decided>.numeric{font-size:var(--type-section-title-size);line-height:var(--type-section-title-line);font-weight:var(--font-weight-bold)}
+.a3-evitem .a3-aut-value>.a3-evitem-requirement,
+.a3-decrow-decided>.numeric{font-size:var(--type-body-size);line-height:var(--type-body-line);font-weight:var(--font-weight-bold)}
+/* Die Einheit bleibt kleiner auf derselben Grundlinie (Regel 31) — bei
+   18 px Wert wäre `--type-body` fast derselbe Kegel, also eine Stufe
+   tiefer. */
 .a3-evitem .a3-aut-value>.a3-mro-unit,
-.a3-decrow-decided>.a3-mro-unit{font-size:var(--type-body-size);line-height:var(--type-body-line)}
+.a3-decrow-decided>.a3-mro-unit{font-size:var(--type-small-size);line-height:var(--type-small-line)}
 .a3-evitem-label{display:grid;gap:0;font-size:var(--type-small-size);line-height:var(--type-small-line);font-weight:var(--font-weight-bold);color:var(--color-text-primary);overflow-wrap:break-word;hyphens:auto}
 /* Applicability is a BLOCK element, so the line never depends on markup
    whitespace to separate it from the label (rule 37). */
@@ -2944,14 +2953,22 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    .a3-decrow-decided-meta · .a3-decrow-manual
    Keine eigene Zeilen-Geometrie: die Zeile IST `.a3-evitem`, hier stehen nur
    die Beistriche, die ein strittiger Wert und eine Frage zusätzlich tragen. */
+/* EINE STUFE FÜR DIE GANZE ENTSCHEIDUNGSZEILE (Owner, 17.09.2026).
+   Begründung, Annahme, Geltungsbereich, Herkunft und die Meta-Angabe des
+   Beschlusses standen auf `--type-caption` — neben einem 24 px grossen Wert
+   ist das Kleingedrucktes, und fünf Zeilen Kleingedrucktes liest niemand.
+   `--type-body` hätte mit dem Wert konkurriert, also die Stufe dazwischen:
+   `--type-small`. Der Wert selbst bleibt, wo er ist — er ist der Grund,
+   weswegen die Zeile überhaupt gelesen wird. Gilt nur für `v4`: diese
+   Klassen existieren ausschliesslich in der zusammengeführten Liste. */
 .a3-decrow-marks{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3);margin:0 0 var(--space-2);min-width:0}
-.a3-decrow-manual{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-decrow-manual{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
 /* Der Trenner gehört der Auszeichnung, nicht dem Text: ein «·» im Wörterbuch
    wäre Satzbau aus Fragmenten (Regel 36). */
 .a3-decrow-manual::before{content:'·';margin-inline-end:var(--space-1)}
-.a3-decrow-scope{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
-.a3-decrow-impact{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-primary);max-width:var(--measure-band)}
-.a3-decrow-assumption{margin:var(--space-2) 0 0;padding-inline-start:var(--space-2);border-left:var(--size-status-accent-width) solid var(--color-border-default);font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);max-width:var(--measure-band)}
+.a3-decrow-scope{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
+.a3-decrow-impact{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary);max-width:var(--measure-band)}
+.a3-decrow-assumption{margin:var(--space-2) 0 0;padding-inline-start:var(--space-2);border-left:var(--size-status-accent-width) solid var(--color-border-default);font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);max-width:var(--measure-band)}
 .a3-decrow-choice{display:grid;justify-items:start;gap:var(--space-2);margin-block-start:var(--space-2);min-width:0}
 /* Die Herkunftszeile bekommt die Breite, die die Spalte hergibt: auf
    420 px gedeckelt brach sie mitten in der Revisionsangabe um («REV-\ C»),
@@ -2977,9 +2994,9 @@ tr.a3-flash>td{animation:a3-flash .6s var(--motion-easing-standard)}
    eine Entscheidungszeile ist mehrzeilig, und bei gleichem Abstand liefen
    sie ineinander. */
 .a3-evitem:has(.a3-decrow-marks){padding-block:var(--space-5)}
-.a3-decrow-source{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary);max-width:none;justify-self:stretch}
+.a3-decrow-source{margin:0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary);max-width:none;justify-self:stretch}
 .a3-decrow-decided{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--space-1) var(--space-3);margin:var(--space-2) 0 0;font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-primary)}
-.a3-decrow-decided-meta{font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
+.a3-decrow-decided-meta{font-size:var(--type-small-size);line-height:var(--type-small-line);color:var(--color-text-secondary)}
 .a3-evitem-source{background:transparent;border:0;padding:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);font-weight:var(--font-weight-medium);color:var(--color-text-primary);text-decoration:underline;text-decoration-thickness:var(--border-width-default);text-underline-offset:var(--size-text-underline-offset)}
 .a3-evitem-nosource{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
 .a3-evitem-downstream{margin:0;font-size:var(--type-caption-size);line-height:var(--type-caption-line);color:var(--color-text-secondary)}
@@ -5340,8 +5357,12 @@ a.a3-cockpit-effect:hover .a3-cockpit-effect-name{color:var(--color-text-primary
    not the row (rule 23). Depth is indentation only — the tree is expressed
    by the numbering the sheet already has, not by four levels of rule. */
 .a3-dt .a3-dt-twist{appearance:none;background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:start;cursor:pointer;display:block;inline-size:100%;position:relative}
-.a3-dt .a3-dt-twist::after{content:'▸';position:absolute;inset-inline-start:calc(-1 * var(--space-4));color:var(--color-text-secondary)}
-.a3-dt .a3-dt-twist[aria-expanded="true"]::after{content:'▾'}
+/* Der Winkel ist ein gezeichnetes Zeichen, keine Pseudo-Glyphe: «▸» und
+   «▾» sind in Visuelt unterschiedlich grosse Dreiecke, also drifteten offen
+   und zu optisch auseinander. Eine Form, gedreht. */
+.a3-dt .a3-dt-twist-glyph{position:absolute;inset-inline-start:calc(-1 * var(--space-4));inset-block-start:calc((var(--type-small-line) - var(--size-icon-sm)) / 2);inline-size:var(--size-icon-sm);block-size:var(--size-icon-sm);color:var(--color-text-secondary);transition:transform var(--motion-feedback) var(--motion-easing-standard)}
+.a3-dt .a3-dt-twist[aria-expanded="true"] .a3-dt-twist-glyph{transform:rotate(90deg)}
+@media (prefers-reduced-motion:reduce){.a3-dt .a3-dt-twist-glyph{transition:none}}
 .a3-dt tr[data-depth] th{padding-inline-start:var(--space-4)}
 .a3-dt tr[data-depth="1"] th{padding-inline-start:var(--space-6)}
 .a3-dt tr[data-depth="2"] th{padding-inline-start:calc(var(--space-6) + var(--space-5))}

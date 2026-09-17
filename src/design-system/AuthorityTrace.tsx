@@ -110,7 +110,19 @@ export function AuthorityTrace({
   /** A manual override keeps the value it replaced, plus the reason. */
   override?: { previous: string; reason: string; actor: string; at: string }
   /** Set when newer evidence exists: the value needs review, not replacing. */
-  freshness?: { staleReason: string }
+  /**
+   * VERTRAGSÄNDERUNG 17.09.2026 — `staleReason` ist optional.
+   *
+   * Der Slot macht zwei Aussagen: er setzt die Angabe auf `stale` (und
+   * damit das Abzeichen «veraltet») UND druckt den Satz, der erklärt,
+   * warum. Wo die Zeile diesen Grund schon selbst trägt — die
+   * zusammengeführte Checkliste nennt darunter die konkurrierende Angabe
+   * beim Namen — war der Satz die dritte Fassung derselben Aussage. Ohne
+   * Grund bleibt der Zustand, der Satz entfällt; `freshness` ganz
+   * weglassen wäre etwas anderes, nämlich die Behauptung, die Angabe sei
+   * aktuell.
+   */
+  freshness?: { staleReason?: string }
   children: ReactNode
   layout?: 'inline' | 'stacked'
   /**
@@ -177,7 +189,7 @@ export function AuthorityTrace({
             })}
           </span>
         ) : null}
-        {freshness ? (
+        {freshness?.staleReason ? (
           <span className="a3-aut-freshness">{freshness.staleReason}</span>
         ) : null}
       </span>

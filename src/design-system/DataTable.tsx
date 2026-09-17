@@ -137,6 +137,27 @@ export function DataTable({
                       aria-expanded={row.disclosure.expanded}
                       onClick={row.disclosure.onToggle}
                     >
+                      {/* Ein GEZEICHNETER Winkel, kein typografisches «▸»:
+                          das Zeichen rendert in Visuelt auf einem Bruchteil
+                          seiner em-Box und liest sich als Staub neben einer
+                          fetten Zeilenüberschrift. Dieselbe Form wie die
+                          Aufklapper der Checkliste, einmal gedreht — offen
+                          und zu können nicht auseinanderlaufen. */}
+                      <svg
+                        className="a3-dt-twist-glyph"
+                        data-open={row.disclosure.expanded ? 'true' : undefined}
+                        viewBox="0 0 16 16"
+                        aria-hidden="true"
+                        focusable="false"
+                      >
+                        <path
+                          d="M5 3.5 L10.5 8 L5 12.5"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.75"
+                          strokeLinecap="square"
+                        />
+                      </svg>
                       {row.header}
                     </button>
                   )

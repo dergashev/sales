@@ -1305,6 +1305,7 @@ function UnderstandingOverview({
           opens, and watches the contested ones settle. */}
       <EvidenceGroups
         project={project}
+        merged={merged}
         filter={merged ? filter : undefined}
         toolbar={merged ? (
           <ChecklistFilterControl
@@ -2097,6 +2098,7 @@ function ReadyStage({
           h3 and the document outline read backwards. */}
       <EvidenceGroups
         project={project}
+        merged={merged}
         filter={merged ? filter : undefined}
         toolbar={merged ? (
           <ChecklistFilterControl
@@ -2399,8 +2401,14 @@ const EvidenceSourceContext = createContext<{
   open: (request: SourceRequest) => void
 }>({ openItemId: null, open: () => {} })
 
-function EvidenceGroups({ project: fixture, lead, toolbar, filter }: {
+function EvidenceGroups({ project: fixture, lead, toolbar, filter, merged }: {
   project: FixtureProject
+  /**
+   * `v4` — die zusammengeführte Liste. Die Gruppen selbst sind in allen
+   * Varianten dieselben; was nur für `v4` entschieden wurde, hängt an
+   * diesem Schalter und lässt `v1`–`v3` unberührt.
+   */
+  merged?: boolean
   /** The filter control, rendered under the heading when the surface has one. */
   toolbar?: ReactNode
   /** `undefined` — kein Filter auf dieser Fläche (v1–v3). */
@@ -2487,6 +2495,7 @@ function EvidenceGroups({ project: fixture, lead, toolbar, filter }: {
                   group={group}
                   settledHere={settledHere}
                   filter={filter}
+                  merged={merged}
                 />
               ))}
           </div>
@@ -2814,12 +2823,13 @@ function EvidenceRowEditor({
 }
 
 function EvidenceGroupPanel({
-  project, group, settledHere, filter,
+  project, group, settledHere, filter, merged,
 }: {
   project: FixtureProject
   group: EvidenceGroup
   settledHere: ReadonlySet<string>
   filter?: ChecklistFilter
+  merged?: boolean
 }) {
   const t = useT()
   const headingId = useId()
@@ -2894,7 +2904,12 @@ function EvidenceGroupPanel({
            never a `display:none` set from a style. */
         <dl id={listId} className="a3-evlist" hidden={!open}>
           {view.items.map((item) => (
-            <EvidenceItemRow key={item.id} project={project} item={item} />
+            <EvidenceItemRow
+              key={item.id}
+              project={project}
+              item={item}
+              merged={merged}
+            />
           ))}
         </dl>
       )}
@@ -2912,10 +2927,12 @@ function EvidenceGroupPanel({
  * "needs review" without losing where the value came from.
  */
 function EvidenceItemRow({
-  project, item,
+  project, item, merged,
 }: {
   project: FixtureProject
   item: FixtureEvidenceItem
+  /** `v4` — die zusammengeführte Liste (siehe `EvidenceGroups`). */
+  merged?: boolean
 }) {
   const t = useT()
   const num = useLocalNumber()
@@ -3001,11 +3018,27 @@ function EvidenceItemRow({
               at: item.confirmedAt ? localDateTime(item.confirmedAt, language) : '',
             }
             : undefined}
+          /*
+           * IN `v4` OHNE DEN SATZ (Owner, 17.09.2026).
+           *
+           * Die Zeile trug ihn dreifach: das Abzeichen «▲ veraltet», dieser
+           * orange Satz und darunter «Eine neuere Quelle nennt 48 · der
+           * bestätigte Wert gilt, bis jemand entscheidet». Der letzte nennt
+           * die konkurrierende ANGABE, also die Sache, um die es geht; der
+           * orange Satz sagte dasselbe in Prosa. `v1`–`v3` behalten ihn:
+           * dort gibt es die untere Zeile nicht.
+           */
           freshness={trace.stale
             ? {
-              staleReason: item.reasonKey
-                ? t(item.reasonKey)
-                : t(`vr3.evidence.state.${item.state}`),
+              /* In `v4` OHNE den Satz: das Abzeichen «veraltet» bleibt, den
+                 Grund nennt die Zeile darunter selbst («Eine neuere Quelle
+                 nennt 48 …»). `v1`–`v3` behalten ihn, dort gibt es diese
+                 Zeile nicht. */
+              staleReason: merged
+                ? undefined
+                : item.reasonKey
+                  ? t(item.reasonKey)
+                  : t(`vr3.evidence.state.${item.state}`),
             }
             : undefined}
         >
